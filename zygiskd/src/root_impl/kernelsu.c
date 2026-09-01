@@ -96,7 +96,7 @@ void ksu_get_existence(struct root_impl_state *state) {
               Some users don't want to use KernelSU, but, for example, Magisk.
               This if allows this to happen, as it checks if "ksud" exists,
               which in case it doesn't, it won't be considered as supported. */
-      if (access("/data/adb/ksu/bin/ksud", F_OK) == -1) {
+      if (access("/data/adb/ksud", F_OK) == -1) {
         LOGW("KernelSU %d detected, but ksud not found.", version);
 
         state->state = Inexistent;
