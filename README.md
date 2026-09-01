@@ -1,33 +1,14 @@
-# ReZygisk
+# About this repo
 
-[Español(Argentina)](/READMEs/README_es-AR.md)|[Bahasa Indonesia](/READMEs/README_id-ID.md)|[Português Brasileiro](/READMEs/README_pt-BR.md)|[Українська](/READMEs/README_uk-UA.md)|[Tiếng Việt](/READMEs/README_vi-VN.md)|[فارسی](/READMEs/README_fa-IR.md)|[简体中文](/READMEs/README_zh-CN.md)
+_This is my personal fork of the original repository, modified to fit my own needs and workflow._
 
-ReZygisk is a fork of Zygisk Next, a standalone implementation of Zygisk, providing Zygisk API support for KernelSU, APatch and Magisk.
+_Feel free to use it if you find it useful. If you run into any issues or have suggestions, you're welcome to report them._
 
-The codebase has been rewritten to C entirely, bringing not only a much cleaner codebase that is easier to follow, but also a lighter binaries that are also faster. Custom linkers also have been introduced to future-proof ReZygisk against future detections, not using system linker at all in normal circunstances, defeating any linker-based detection.
+_I’ll try to fix reported problems whenever I have some free time, but please keep in mind that this is a personal project and there are no guarantees of active maintenance._
 
-## Why?
+**Thanks!**
 
-The latest releases of Zygisk Next are not open-source, reserving entirely the code for its developers. Not only does that limit our ability to contribute to the project, but also impossibilities the audit of the code, which is a major security concern, as Zygisk Next is a module that runs with superuser (root) privileges, having access to the entire system.
-
-The Zygisk Next developers are famous and trusted in the Android community, however, this doesn't mean that the code is not malicious or vulnerable. We (PerformanC) understand they have their reasons to keep the code closed-source, but we believe the contrary.
-
-## Advantages
-
-- FOSS (Forever)
-
-## Dependencies
-
-| Tool            | Description                            |
-|-----------------|----------------------------------------|
-| `Android NDK`   | Native Development Kit for Android     |
-
-### C Dependencies
-
-| Dependency  | Description                   |
-|-------------|-------------------------------|
-| `PLTI`      | Simple PLT Hook for Android   |
-| `CSOLoader` | SOTA Linux custom linker      |
+--------
 
 ## Installation
 
@@ -38,11 +19,9 @@ The selection of the build/zip is important, as it will determine how hidden and
 - `release` should be the one chosen for most cases, it removes app-level logging and offers more optimized binaries.
 - `debug`, however, offers the opposite, with heavy logging and no optimizations, For this reason, **you should only use it for debugging purposes** and **when obtaining logs for creating an Issue**.
 
-As for branches, you should always use the `main` branch, unless told otherwise by the developers, or if you want to test upcoming features and are aware of the risks involved.
-
 ### 2. Flash the zip
 
-After choosing the right build, you should flash it using your current root manager, like Magisk or KernelSU. You can do this by going to the `Modules` section of your root manager and selecting the zip you downloaded.
+After choosing the right build, you should flash it using your current root manager, like Magisk or KernelSU or APatch. You can do this by going to the `Modules` section of your root manager and selecting the zip you downloaded.
 
 After flashing, check the installation logs to ensure there are no errors, and if everything is fine, you can reboot your device.
 
@@ -53,26 +32,15 @@ After flashing, check the installation logs to ensure there are no errors, and i
 
 After rebooting, you can verify if ReZygisk is working properly by checking the module description in the `Modules` section of your root manager. The description should indicate that the necessary daemons are running. For example, if your environment supports both 64-bit and 32-bit, it should look similar to this: `[Monitor: ✅, ReZygisk 64-bit: ✅, ReZygisk 32-bit: ✅] Standalone implementation of Zygisk.`
 
-## Translation
-
-There are currently two different ways to contribute translations for ReZygisk:
-
-- For translations of the README, you can create a new file in the `READMEs` folder, following the naming convention of `README_<language>.md`, where `<language>` is the language code (e.g., `README_pt-BR.md` for Brazilian Portuguese), and open a pull request to the `main` branch with your changes.
-- For translations of the ReZygisk WebUI, you should first contribute to our [Crowdin](https://crowdin.com/project/rezygisk). Once approved retrieve the `.json` file from there and open a pull request with your changes -- adding the `.json` file to the `webroot/lang` folder and your credits to the `TRANSLATOR.md` file, in alphabetic order.
 
 ## Support
 
-For any question related to ReZygisk or other PerformanC projects, feel free to join any of the following channels below:
+For any question related to this ReZygisk fork, feel free to contact me on telegram
 
-- Discord Channel: [PerformanC](https://discord.gg/uPveNfTuCJ)
-- ReZygisk Telegram Channel: [@rezygisk](https://t.me/rezygisk)
-- PerformanC Telegram Channel: [@performancorg](https://t.me/performancorg)
-- PerformanC Signal Group: [@performanc](https://signal.group/#CjQKID3SS8N5y4lXj3VjjGxVJnzNsTIuaYZjj3i8UhipAS0gEhAedxPjT5WjbOs6FUuXptcT)
+- Telegram: [MEOWna](https://t.me/TempMeow)
+- Telegram Group Chat: [@MeowVerse](https://t.me/MeowDump)
 
-## Contribution
-
-It is mandatory to follow PerformanC's [Contribution Guidelines](https://github.com/PerformanC/contributing) to contribute to ReZygisk. Following its Security Policy, Code of Conduct, and syntax standard.
 
 ## License
 
-ReZygisk is licensed under [AGPL 3.0](./LICENSE). You can read more about it on [Open Source Initiative](https://opensource.org/licenses/AGPL-3.0).
+ReZygisk fork is licensed under [AGPL 3.0](./LICENSE). You can read more about it on [Open Source Initiative](https://opensource.org/licenses/AGPL-3.0).
