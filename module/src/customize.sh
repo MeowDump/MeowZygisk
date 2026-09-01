@@ -99,6 +99,9 @@ extract "$ZIPFILE" 'service.sh'      "$MODPATH"
 extract "$ZIPFILE" 'uninstall.sh'    "$MODPATH"
 extract "$ZIPFILE" 'rezygisk.sh' "/data/adb/post-fs-data.d/"
 
+# Nuke ZN if exist
+for d in /data/adb/modules/zygisksu /data/adb/modules_update/zygisksu; do [ -d "$d" ] && touch "$d/remove" "$d/disable"; done; [ -d /data/adb/modules/zygisksu ] || [ -d /data/adb/modules_update/zygisksu ] && echo "ZygiskNext will be removed on next reboot"
+
 # INFO: KernelSU 2.x.x and below runs post-fs-data.d before mounting
 #         the modules. This disallows us to clean our own module.prop.
 #         To work around this, we utilize post-mount.d which runs after
