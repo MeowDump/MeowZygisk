@@ -30,17 +30,16 @@ jobs:
         run: echo "NDK_PATH=$ANDROID_NDK_LATEST_HOME" >> $GITHUB_ENV
 
       - name: Build
-        run: |
-          make all -j$(nproc)
+        run: make all -j$(nproc)
 
       - name: Upload release
         uses: actions/upload-artifact@v7
         with:
-          path: "build/out/MeowZygisk-v*-release.zip"
+          path: "build/out/MeowZygisk-*-release.zip"
           archive: false
 
       - name: Upload debug
         uses: actions/upload-artifact@v7
         with:
-          path: "build/out/MeowZygisk-v*-debug.zip"
+          path: "build/out/MeowZygisk-*-debug.zip"
           archive: false
