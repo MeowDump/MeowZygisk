@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #include <linux/limits.h>
@@ -32,6 +33,7 @@ struct Context {
 #define PATH_CP_NAME TMP_PATH "/" LP_SELECT("cp32.sock", "cp64.sock")
 #define ZYGISKD_FILE PATH_MODULES_DIR "/rezygisk/bin/zygiskd" LP_SELECT("32", "64")
 #define ZYGISKD_PATH "/data/adb/modules/rezygisk/bin/zygiskd" LP_SELECT("32", "64")
+#define MAX_MODULE_NAME 128
 
 #ifdef __aarch64__
   #define ARCH_STR "arm64-v8a"
@@ -46,7 +48,39 @@ struct Context {
   #define ARCH_STR "unknown"
 #endif
 
-/* WARNING: Dynamic memory based */
+static bool valid_module_name(const char *name) {
+  if (name == NULL || name[0] == '\0') return false;
+
+  size_t len = strnlen(name, MAX_MODULE_NAME + 1);
+  if (len == 0 || len > MAX_MODULE_NAME) return false;
+
+  for (size_t i = 0; i < len; i++) {
+    unsigned char c = (unsigned char)name[i];
+    if (!((c >= 'a' && c <= 'z') ||
+          (c >= 'A' && c <= 'Z') ||
+          (c >= '0' && c <= '9') ||
+          c == '_' || c == '-' || c == '.')) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool valid_module_library(const char *path, int *fd_out) {
+  int fd = open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+  if (fd == -1) return false;
+
+  struct stat st;
+  if (fstat(fd, &st) == -1 || !S_ISREG(st.st_mode) || st.st_size <= 0) {
+    close(fd);
+    return false;
+  }
+
+  *fd_out = fd;
+  return true;
+}
+
 static void load_modules(struct Context *restrict context) {
   context->len = 0;
   context->modules = NULL;
@@ -62,56 +96,50 @@ static void load_modules(struct Context *restrict context) {
 
   struct dirent *entry;
   while ((entry = readdir(dir)) != NULL) {
-    if (entry->d_type != DT_DIR) continue; /* INFO: Only directories */
-    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, "rezygisk") == 0) continue;
+    if (context->len >= REZYGISK_MAX_MODULES) {
+      LOGW("Module limit reached: %u", REZYGISK_MAX_MODULES);
+      break;
+    }
 
-    char *name = entry->d_name;
+    if (entry->d_name[0] == '.' ||
+        strcmp(entry->d_name, "rezygisk") == 0 ||
+        !valid_module_name(entry->d_name)) {
+      continue;
+    }
+
+    char module_dir[PATH_MAX];
     char so_path[PATH_MAX];
-    snprintf(so_path, PATH_MAX, "/data/adb/modules/%s/zygisk/" ARCH_STR ".so", name);
-
-    if (access(so_path, R_OK) == -1) continue;
-
     char disabled[PATH_MAX];
-    snprintf(disabled, PATH_MAX, "/data/adb/modules/%s/disable", name);
+    int written = snprintf(module_dir, sizeof(module_dir), "%s/%s", PATH_MODULES_DIR, entry->d_name);
+    if (written < 0 || (size_t)written >= sizeof(module_dir)) continue;
+
+    struct stat module_st;
+    if (lstat(module_dir, &module_st) == -1 || !S_ISDIR(module_st.st_mode)) continue;
+
+    written = snprintf(so_path, sizeof(so_path), "%s/zygisk/" ARCH_STR ".so", module_dir);
+    if (written < 0 || (size_t)written >= sizeof(so_path)) continue;
+
+    written = snprintf(disabled, sizeof(disabled), "%s/disable", module_dir);
+    if (written < 0 || (size_t)written >= sizeof(disabled)) continue;
 
     if (access(disabled, F_OK) == 0) continue;
 
-    int lib_fd = open(so_path, O_RDONLY | O_CLOEXEC);
-    if (lib_fd == -1) {
-      LOGE("Failed loading module \"%s\"", name);
-
-      continue;
-    }
+    int lib_fd = -1;
+    if (!valid_module_library(so_path, &lib_fd)) continue;
 
     struct Module *tmp_modules = realloc(context->modules, (context->len + 1) * sizeof(struct Module));
     if (tmp_modules == NULL) {
       LOGE("Failed reallocating memory for modules.");
-
       close(lib_fd);
-
-      for (size_t i = 0; i < context->len; i++) {
-        free(context->modules[i].name);
-        if (context->modules[i].companion >= 0) close(context->modules[i].companion);
-        if (context->modules[i].lib_fd >= 0) close(context->modules[i].lib_fd);
-      }
-
-      free(context->modules);
-      context->modules = NULL;
-      context->len = 0;
-
-      closedir(dir);
-
-      return;
+      break;
     }
     context->modules = tmp_modules;
 
-    context->modules[context->len].name = strdup(name);
+    context->modules[context->len].name = strdup(entry->d_name);
     if (context->modules[context->len].name == NULL) {
-      LOGE("Failed to strdup for the module \"%s\": %s", name, strerror(errno));
-
+      LOGE("Failed to allocate module name for \"%s\": %s", entry->d_name, strerror(errno));
       close(lib_fd);
-
-      return;
+      break;
     }
 
     context->modules[context->len].lib_fd = lib_fd;
@@ -121,7 +149,6 @@ static void load_modules(struct Context *restrict context) {
 
   closedir(dir);
 }
-
 static void free_modules(struct Context *restrict context) {
   for (size_t i = 0; i < context->len; i++) {
     free(context->modules[i].name);
