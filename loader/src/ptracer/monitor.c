@@ -674,8 +674,28 @@ void sigchld_listener_callback() {
 
         ptrace_process:
 
-        ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_TRACEEXEC);
-        ptrace(PTRACE_CONT, pid, 0, 0);
+        if (ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_TRACEEXEC) == -1) {
+          PLOGE("set ptrace options for %d", pid);
+          ptrace(PTRACE_DETACH, pid, 0, 0);
+          for (size_t i = 0; i < sigchld_process_count; i++) {
+            if (sigchld_process[i] == pid) {
+              sigchld_process[i] = 0;
+              break;
+            }
+          }
+          continue;
+        }
+
+        if (ptrace(PTRACE_CONT, pid, 0, 0) == -1) {
+          PLOGE("continue process %d", pid);
+          ptrace(PTRACE_DETACH, pid, 0, 0);
+          for (size_t i = 0; i < sigchld_process_count; i++) {
+            if (sigchld_process[i] == pid) {
+              sigchld_process[i] = 0;
+              break;
+            }
+          }
+        }
 
         continue;
       } else {
