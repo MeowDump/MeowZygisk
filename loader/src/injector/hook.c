@@ -784,7 +784,9 @@ static uint32_t api_get_flags(void) {
 }
 
 bool rezygisk_module_register(struct rezygisk_api *api, struct rezygisk_abi const *target_module) {
-  if (!g_ctx || !api || !target_module || target_module->api_version > REZYGISK_API_VERSION) return false;
+  if (!g_ctx || !api || !target_module) return false;
+  if (target_module->api_version < 1 || target_module->api_version > REZYGISK_API_VERSION) return false;
+  if ((size_t)api->impl < RZID_MAGIC || (size_t)api->impl >= RZID_MAGIC + zygisk_module_length) return false;
 
   LOGD("Registering module with API version %ld", target_module->api_version);
 
@@ -943,7 +945,18 @@ static bool load_modules_only(void) {
     return false;
   }
 
-  zygisk_modules = (struct rezygisk_module *)malloc(ms.modules_count * sizeof(struct rezygisk_module));
+  if (ms.modules_count == 0) {
+    free_modules(&ms);
+    return true;
+  }
+
+  if (ms.modules_count > REZYGISK_MAX_MODULES) {
+    LOGE("ReZygiskd returned too many modules: %zu", ms.modules_count);
+    free_modules(&ms);
+    return false;
+  }
+
+  zygisk_modules = (struct rezygisk_module *)calloc(ms.modules_count, sizeof(struct rezygisk_module));
   if (!zygisk_modules) {
     LOGE("Failed to allocate memory for modules");
 
@@ -1322,15 +1335,35 @@ static bool hook_unregister(const char *lib_name, const char *symbol, bool is_pr
 #define PLT_HOOK_UNREGISTER(LIB, SYM, IS_PREFIX)     \
   PLT_HOOK_UNREGISTER_SYM(LIB, #SYM, SYM, IS_PREFIX)
 
-void hook_functions(void) {
+bool hook_functions(void) {
+  bool fork_hooked = false;
+  bool strdup_hooked = false;
+  bool property_get_hooked = false;
+  bool fd_hooked = false;
+
   plti_init(&plti_ctx);
 
-  plti_add_lib(&plti_ctx, "libandroid_runtime.so");
+  if (!plti_add_lib(&plti_ctx, "libandroid_runtime.so")) {
+    LOGE("Failed to add libandroid_runtime.so to PLTI");
+    plti_deinit(&plti_ctx);
+    return false;
+  }
 
-  PLT_HOOK_REGISTER("libandroid_runtime.so", fork, false);
-  PLT_HOOK_REGISTER("libandroid_runtime.so", strdup, false);
-  PLT_HOOK_REGISTER("libandroid_runtime.so", property_get, false);
-  PLT_HOOK_REGISTER_SYM("libandroid_runtime.so", "_ZNK18FileDescriptorInfo14ReopenOrDetach", _ZNK18FileDescriptorInfo14ReopenOrDetach, true);
+  if (!(fork_hooked = PLT_HOOK_REGISTER("libandroid_runtime.so", fork, false))) goto fail;
+  if (!(strdup_hooked = PLT_HOOK_REGISTER("libandroid_runtime.so", strdup, false))) goto fail;
+  if (!(property_get_hooked = PLT_HOOK_REGISTER("libandroid_runtime.so", property_get, false))) goto fail;
+  if (!(fd_hooked = PLT_HOOK_REGISTER_SYM("libandroid_runtime.so", "_ZNK18FileDescriptorInfo14ReopenOrDetach", _ZNK18FileDescriptorInfo14ReopenOrDetach, true))) goto fail;
+
+  return true;
+
+fail:
+  if (fd_hooked) hook_unregister("libandroid_runtime.so", "_ZNK18FileDescriptorInfo14ReopenOrDetach", true, (void **)&old__ZNK18FileDescriptorInfo14ReopenOrDetach);
+  if (property_get_hooked) hook_unregister("libandroid_runtime.so", "property_get", false, (void **)&old_property_get);
+  if (strdup_hooked) hook_unregister("libandroid_runtime.so", "strdup", false, (void **)&old_strdup);
+  if (fork_hooked) hook_unregister("libandroid_runtime.so", "fork", false, (void **)&old_fork);
+
+  plti_deinit(&plti_ctx);
+  return false;
 }
 
 static void hook_unloader(void) {
