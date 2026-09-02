@@ -2,8 +2,9 @@ import { exec, toast as ksuToast, fullScreen } from './js/kernelsu.js';
 import en from './translations/en.js';
 import ar from './translations/ar.js';
 import zh from './translations/zh.js';
+import ru from './translations/ru.js';
 
-const translations = { en, ar, zh };
+const translations = { en, ar, zh, ru };
 const RTL_LANGS = ['ar'];
 let currentLang = localStorage.getItem('meowzygisk-lang') || 'en';
 
