@@ -45,6 +45,7 @@ static int rezygiskd_connect(uint8_t retry) {
       if (!retry) return -1;
 
       sleep(1);
+      continue;
     }
 
     return fd;
@@ -229,8 +230,16 @@ bool rezygiskd_read_modules(struct zygisk_modules *modules) {
   size_t len = 0;
   safe_read(read_size_t(fd, &len), "modules count", return false);
 
-  modules->modules = malloc(len * sizeof(char *));
-  if (!modules->modules) {
+  if (len > REZYGISK_MAX_MODULES) {
+    LOGE("ReZygiskd returned too many modules: %zu", len);
+
+    close(fd);
+
+    return false;
+  }
+
+  modules->modules = len == 0 ? NULL : calloc(len, sizeof(char *));
+  if (len != 0 && !modules->modules) {
     PLOGE("allocating modules name memory");
 
     close(fd);
