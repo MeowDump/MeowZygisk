@@ -163,11 +163,24 @@ bool trace_zygote(int pid, bool tango_flag) {
     WAIT_OR_DIE;
   }
 
-  kill(pid, SIGCONT);
-  ptrace(PTRACE_SYSCALL, pid, 0, 0);
+  if (kill(pid, SIGCONT) == -1) {
+    PLOGE("SIGCONT");
+    ptrace(PTRACE_DETACH, pid, 0, 0);
+    return false;
+  }
 
-  int dummy;
-  wait_for_ptrace_syscall_stop(pid, &dummy);
+  if (ptrace(PTRACE_SYSCALL, pid, 0, 0) == -1) {
+    PLOGE("PTRACE_SYSCALL");
+    ptrace(PTRACE_DETACH, pid, 0, 0);
+    return false;
+  }
+
+  int dummy = 0;
+  if (!wait_for_ptrace_syscall_stop(pid, &dummy)) {
+    LOGE("initial syscall stop failed");
+    ptrace(PTRACE_DETACH, pid, 0, SIGCONT);
+    return false;
+  }
 
   uintptr_t libc_init_got_slot = 0, libc_init_resolved = 0;
   if (!wait_linker_ready(pid, &libc_init_resolved, &libc_init_got_slot)) {
