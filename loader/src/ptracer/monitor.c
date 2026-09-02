@@ -815,7 +815,7 @@ static char post_section[1024];
 
 #define WRITE_STATUS_ABI(suffix)                                                     \
   if (status ## suffix.supported) {                                                  \
-    strcat(status_text, ", ReZygisk " # suffix "-bit: ");                            \
+    strcat(status_text, ", Zygisk " # suffix "-bit: ");                            \
                                                                                      \
     if (tracing_state != TRACING) strcat(status_text, "❌");                         \
     else if (status ## suffix.zygote_injected && status ## suffix.daemon_running)    \
@@ -842,13 +842,13 @@ static bool update_status(const char *message) {
   }
 
   if (message) {
-    fprintf(prop, "%s[%s] %s", pre_section, message, post_section);
+    fprintf(prop, "%s%s — %s", pre_section, message, post_section);
     fclose(prop);
 
     return true;
   }
 
-  char status_text[256] = "Monitor: ";
+  char status_text[256] = "Status: ";
   switch (tracing_state) {
     case TRACING: {
       strcat(status_text, "✅");
