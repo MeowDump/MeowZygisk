@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define PROCESS_NAME_MAX_LEN 256 + 1
+#define REZYGISK_MAX_MODULES 256u
 
 #define ZYGOTE_INJECTED LP_SELECT(5, 4)
 #define DAEMON_SET_INFO LP_SELECT(7, 6)
