@@ -18,13 +18,13 @@ else
 	TYPE_LDFLAGS =
 endif
 
-LOADER_CFLAGS = -std=c18 -D_GNU_SOURCE -Wall -Wextra -fno-rtti -fno-exceptions         \
-				-fno-stack-protector -fomit-frame-pointer -Wno-builtin-macro-redefined \
+LOADER_CFLAGS = -std=c18 -D_GNU_SOURCE -Wall -Wextra -fno-rtti -fno-exceptions \
+				-fomit-frame-pointer -Wno-builtin-macro-redefined \
 				'-D__FILE__=__FILE_NAME__' -DZKSU_VERSION=\"$(ZKSU_VERSION)\"
 
-COMMON_LDFLAGS = -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-rosegment           \
+COMMON_LDFLAGS = -static-libstdc++ -Wl,--build-id=sha1 -Wl,--no-rosegment \
 				 -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined \
-				 -Qunused-arguments -Wl,--gc-sections
+				 -Wl,-z,noexecstack -Qunused-arguments -Wl,--gc-sections
 
 COMMON_SRCS = src/common/daemon.c src/common/elf_util.c   \
 			  src/common/misc.c src/common/socket_utils.c
