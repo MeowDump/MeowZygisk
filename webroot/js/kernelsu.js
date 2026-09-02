@@ -1,6 +1,3 @@
-/* https://github.com/tiann/KernelSU/tree/main/js / https://www.npmjs.com/package/kernelsu */
-import { getDevelopmentExecResponse } from "./development_kit.js";
-
 let callbackCounter = 0;
 function getUniqueCallbackName(prefix) {
   return `${prefix}_callback_${Date.now()}_${callbackCounter++}`;
@@ -8,9 +5,7 @@ function getUniqueCallbackName(prefix) {
 
 export function exec(command, options) {
   if (typeof ksu === "undefined") {
-    /* INFO: Assume this is a computer for ReZygisk testing */
-
-    return getDevelopmentExecResponse(command);
+    return Promise.reject(new Error("KernelSU WebUI API unavailable"));
   }
 
   if (typeof options === "undefined") {
@@ -18,10 +13,8 @@ export function exec(command, options) {
   }
 
   return new Promise((resolve, reject) => {
-    // Generate a unique callback function name
     const callbackFuncName = getUniqueCallbackName("exec");
 
-    // Define the success callback function
     window[callbackFuncName] = (errno, stdout, stderr) => {
       resolve({ errno, stdout, stderr });
       cleanup(callbackFuncName);
@@ -78,13 +71,10 @@ ChildProcess.prototype.emit = function (event, ...args) {
 };
 
 export function spawn(command, args, options) {
-  /* INFO: Assume this is a computer for ReZygisk testing */
-  if (typeof ksu === "undefined") return new ChildProcess();
 
   if (typeof args === "undefined") {
     args = [];
   } else if (!(args instanceof Array)) {
-    // allow for (command, options) signature
     options = args;
   }
 
@@ -119,14 +109,12 @@ export function spawn(command, args, options) {
 }
 
 export function fullScreen(isFullScreen) {
-  /* INFO: Assume this is a computer for ReZygisk testing */
   if (typeof ksu === "undefined") return;
 
   ksu.fullScreen(isFullScreen);
 }
 
 export function toast(message) {
-  /* INFO: Assume this is a computer for ReZygisk testing */
   if (typeof ksu === "undefined") alert(message);
   else ksu.toast(message);
 }
