@@ -815,7 +815,7 @@ static char post_section[1024];
 
 #define WRITE_STATUS_ABI(suffix)                                                     \
   if (status ## suffix.supported) {                                                  \
-    strcat(status_text, ", Zygisk " # suffix "-bit: ");                            \
+    strcat(status_text, "  |  Zygisk " # suffix "-bit: ");                          \
                                                                                      \
     if (tracing_state != TRACING) strcat(status_text, "❌");                         \
     else if (status ## suffix.zygote_injected && status ## suffix.daemon_running)    \
@@ -842,7 +842,7 @@ static bool update_status(const char *message) {
   }
 
   if (message) {
-    fprintf(prop, "%s%s — %s", pre_section, message, post_section);
+    fprintf(prop, "%s%s %s", pre_section, message, post_section);
     fclose(prop);
 
     return true;
@@ -871,7 +871,7 @@ static bool update_status(const char *message) {
   WRITE_STATUS_ABI(64)
   WRITE_STATUS_ABI(32)
 
-  fprintf(prop, "%s[%s] %s", pre_section, status_text, post_section);
+  fprintf(prop, "%s%s %s", pre_section, status_text, post_section);
   fclose(prop);
 
   if (environment_information64.root_impl || environment_information32.root_impl) {
@@ -894,7 +894,6 @@ static bool update_status(const char *message) {
       fprintf(json, "  },\n");
     else
       fprintf(json, "  }\n");
-
 
     if (status64.supported || status32.supported) {
       fprintf(json, "  \"rezygiskd\": {\n");
