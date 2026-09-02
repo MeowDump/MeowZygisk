@@ -292,10 +292,21 @@ uintptr_t remote_call(int pid, struct user_regs_struct *regs, uintptr_t func_add
     return 0;
   }
 
-  ptrace(PTRACE_CONT, pid, 0, 0);
+  if (ptrace(PTRACE_CONT, pid, 0, 0) == -1) {
+    PLOGE("PTRACE_CONT remote call");
 
-  int status;
+    return 0;
+  }
+
+  int status = 0;
   wait_for_trace(pid, &status, __WALL);
+  if (!WIFSTOPPED(status)) {
+    char status_str[64];
+    parse_status(status, status_str, sizeof(status_str));
+    LOGE("remote call did not stop: %s", status_str);
+
+    return 0;
+  }
   if (!get_regs(pid, regs)) {
     LOGE("failed to get regs after call");
 
@@ -836,6 +847,32 @@ bool wait_for_ptrace_syscall_stop(int pid, int *status) {
     }
 
     if (is_syscall_stop) return true;
+
+    if (stop_event == 0 && (stop_sig == SIGCONT || stop_sig == SIGCHLD || stop_sig == SIGSTOP)) {
+      if (step_retries++ >= 8) {
+        char status_str[64];
+        parse_status(*status, status_str, sizeof(status_str));
+        LOGE("Remote syscall interrupted repeatedly: %s", status_str);
+
+        return false;
+      }
+
+      if (stop_sig != SIGCONT) {
+        LOGV("Remote syscall interrupted by %s, resuming", sigabbrev_np(stop_sig));
+      }
+
+      if (ptrace(PTRACE_SYSCALL, pid, 0, 0) == -1) {
+        if (errno == ESRCH) {
+          LOGE("Tracee %d disappeared while resuming syscall", pid);
+        } else {
+          PLOGE("PTRACE_SYSCALL after signal");
+        }
+
+        return false;
+      }
+
+      continue;
+    }
 
     char status_str[64];
     parse_status(*status, status_str, sizeof(status_str));
