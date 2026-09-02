@@ -4,8 +4,10 @@
 
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 
 #include "logging.h"
+#include "daemon.h"
 
 #include "socket_utils.h"
 
@@ -16,12 +18,10 @@ ssize_t write_loop(int fd, const void *buf, size_t count) {
   while (written < count) {
     ssize_t ret = TEMP_FAILURE_RETRY(write(fd, (const char *)buf + written, count - written));
     if (ret == -1) {
-      if (errno == EAGAIN) {
-        LOGW("Got EAGAIN while writing to fd %d, retrying...\n", fd);
-
+      if (errno == EINTR) continue;
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
         /* INFO: Sleep for 1ms*/
         usleep(1000);
-
         continue;
       }
 
@@ -45,12 +45,9 @@ ssize_t read_loop_offset(int fd, void *buf, size_t count, off_t offset) {
     if (offset == 0) ret = TEMP_FAILURE_RETRY(read(fd, (char *)buf + read_bytes, count - read_bytes));
     else ret = TEMP_FAILURE_RETRY(pread(fd, (char *)buf + read_bytes, count - read_bytes, offset + read_bytes));
     if (ret == -1) {
-      if (errno == EAGAIN) {
-        LOGW("Got EAGAIN while reading from fd %d, retrying...\n", fd);
-
-        /* INFO: Sleep for 1ms*/
+      if (errno == EINTR) continue;
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
         usleep(1000);
-
         continue;
       }
 
@@ -149,7 +146,18 @@ int read_fd(int fd) {
 }
 
 ssize_t write_string(int fd, const char *str) {
+  if (str == NULL) {
+    LOGE("Failed to write string: NULL input");
+
+    return -1;
+  }
+
   size_t str_len = strlen(str);
+  if (str_len >= REZYGISK_MAX_SOCKET_STRING) {
+    LOGE("Failed to write string: length %zu exceeds limit %u", str_len, REZYGISK_MAX_SOCKET_STRING);
+
+    return -1;
+  }
   ssize_t write_bytes = write_loop(fd, &str_len, sizeof(size_t));
   if (write_bytes != (ssize_t)sizeof(size_t)) {
     LOGE("Failed to write string length: Not all bytes were written (%zd != %zu).\n", write_bytes, sizeof(size_t));
@@ -172,6 +180,12 @@ char *read_string(int fd) {
   ssize_t read_bytes = read_loop(fd, &str_len, sizeof(size_t));
   if (read_bytes != (ssize_t)sizeof(size_t)) {
     LOGE("Failed to read string length: Not all bytes were read (%zd != %zu).\n", read_bytes, sizeof(size_t));
+
+    return NULL;
+  }
+
+  if (str_len >= REZYGISK_MAX_SOCKET_STRING) {
+    LOGE("Failed to read string: length %zu exceeds limit %u", str_len, REZYGISK_MAX_SOCKET_STRING);
 
     return NULL;
   }
