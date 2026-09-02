@@ -1,105 +1,98 @@
-<!DOCTYPE html>
-<html id="main_html" lang="en" dir="none">
-  <head>
-    <meta name="viewport" content="initial-scale=1, width=device-width" />
-    <meta name="viewport" content="viewport-fit=cover" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <link rel="stylesheet" type="text/css" href="https://mui.kernelsu.org/internal/insets.css">
-
-    <link rel="stylesheet" href="fonts/header.css">
-    <link rel="stylesheet" href="index.css">
-    <link rel="stylesheet" href="css/index.css">
-    <link rel="stylesheet" href="css/icons.css">
-
-    <script src="js/pages/pageLoader.js" type="module"></script>
-    <script src="js/preloader.js" type="module"></script>
-  </head>
-  <body id="main_body">
-    <!-- INFO: Loading screen -->
-    <div id="loading_screen">
-      <div id="backport_errorh" class="loader"></div>
-    </div>
-
-    <div id="minipage_content">
-      <!-- INFO: Dynamically replaced -->
-    </div>
-
-    <div id="page_content">
-      <!-- INFO: Dynamically replaced -->
-    </div>
-
-    <!-- INFO: Bottom navbar -->
-    <div id="navbar_support_div">
-      <div id="navbar" class="radios">
-        <div class="navicon_support nav_dimc">
-          <input id="n_home" type="radio" name="navbutton" value="home"/>
-          <label class="radio nav_dimc" for="n_home">
-
-            <div class="navicon_support nav_dimc" style="display: grid; place-items: center;">
-              <div class="navicon_support nav_dimc" style="display: grid; place-items: center; width: 65px;">
-                <div style="grid-area: 1 / 1;" id="ni_home"></div>
-                <div style="grid-area: 1 / 1;" id="nibg_home" class="navicon"></div>
-              </div>
-              <div id="nav_home_title" class="navtitle nav_dimc">Home</div>
-            </div>
-          </label>
-        </div>
-
-        <div class="navicon_support nav_dimc">
-          <input id="n_modules" type="radio" name="navbutton" value="modules"/>
-          <label class="radio nav_dimc" for="n_modules">
-
-            <div class="navicon_support nav_dimc" style="display: grid; place-items: center;">
-              <div class="navicon_support nav_dimc" style="display: grid; place-items: center; width: 65px;">
-                <div style="grid-area: 1 / 1;" id="ni_modules"></div>
-                <div style="grid-area: 1 / 1;" id="nibg_modules" class="navicon"></div>
-              </div>
-              <div id="nav_modules_title" class="navtitle nav_dimc">Modules</div>
-            </div>
-          </label>
-        </div>
-
-        <div class="navicon_support nav_dimc">
-          <input id="n_actions" type="radio" name="navbutton" value="actions"/>
-          <label class="radio nav_dimc" for="n_actions">
-
-            <div class="navicon_support nav_dimc" style="display: grid; place-items: center;">
-              <div class="navicon_support nav_dimc" style="display: grid; place-items: center; width: 65px;">
-                <div style="grid-area: 1 / 1;" id="ni_actions"></div>
-                <div style="grid-area: 1 / 1;" id="nibg_actions" class="navicon"></div>
-              </div>
-              <div id="nav_actions_title" class="navtitle nav_dimc">Actions</div>
-            </div>
-
-          </label>
-        </div>
-
-        <div class="navicon_support nav_dimc">
-          <input id="n_settings" type="radio" name="navbutton" value="settings"/>
-          <label class="radio nav_dimc" for="n_settings">
-
-            <div class="navicon_support nav_dimc" style="display: grid; place-items: center;">
-              <div class="navicon_support nav_dimc" style="display: grid; place-items: center; width: 65px;">
-                <div style="grid-area: 1 / 1;" id="ni_settings"></div>
-                <div style="grid-area: 1 / 1;" id="nibg_settings" class="navicon"></div>
-              </div>
-              <div id="nav_settings_title" class="navtitle nav_dimc">Settings</div>
-            </div>
-          </label>
-        </div>
-        <!-- INFO: Below are mini page options, they don't not show in the navbar. It use for a way to go back to main pages -->
-        <div style="display: none;">
-          <input id="n_mini_settings_language" style="display: none;" type="radio" name="navbutton" value="mini_settings_language"/>
-          <div id="ni_mini_settings_language" style="display: none;"></div>
-          <div id="nibg_mini_settings_language" style="display: none;"></div>
-        </div>
-        <div style="display: none;">
-          <input id="n_mini_settings_theme" style="display: none;" type="radio" name="navbutton" value="mini_settings_theme"/>
-          <div id="ni_mini_settings_theme" style="display: none;"></div>
-          <div id="nibg_mini_settings_theme" style="display: none;"></div>
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0d14">
+  <title>Meow Zygisk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0,0&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navigation">
+      <div class="brand">
+        <div class="brand-mark"><span class="material-symbols-rounded">deployed_code</span></div>
+        <div>
+          <div class="brand-name">Meow Zygisk</div>
+          <div class="brand-sub" id="brand-version">Standalone Zygisk</div>
         </div>
       </div>
+      <div class="sidebar-bottom">
+        <button class="side-action" id="refresh-btn"><span class="material-symbols-rounded">refresh</span><span data-i18n="refresh">Refresh</span></button>
+        <button class="side-action" id="copy-report-btn"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copyReport">Copy report</span></button>
+        <div class="sidebar-meta"><span id="sidebar-status">Checking runtime</span></div>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div><h1 id="page-title">Meow Zygisk</h1></div>
+        <div class="top-actions">
+          <button class="icon-btn" id="lang-btn" title="Language"><span class="material-symbols-rounded">translate</span></button>
+          <button class="icon-btn" id="support-btn" title="Support"><span class="material-symbols-rounded">open_in_new</span></button>
+          <button class="icon-btn" id="theme-btn" title="Toggle theme"><span class="material-symbols-rounded">dark_mode</span></button>
+        </div>
+      </header>
+      <div class="hero" id="hero-card">
+        <div class="hero-icon"><span class="material-symbols-rounded" id="hero-icon">verified</span></div>
+        <div class="hero-copy">
+          <div class="hero-label" id="hero-label">Checking Meow Zygisk</div>
+          <div class="hero-title" id="hero-title">Reading runtime state...</div>
+          <div class="hero-description" id="hero-description">The dashboard reads the monitor state directly from the device.</div>
+        </div>
+        <button class="hero-refresh" id="hero-refresh"><span class="material-symbols-rounded">sync</span><span data-i18n="refresh">Refresh</span></button>
+      </div>
+      <div class="section-header">
+        <span class="material-symbols-rounded">extension</span>
+        <span data-i18n="loadedModules">Loaded modules</span>
+        <span id="module-total">0</span>
+      </div>
+      <section class="panel-card table-card"><div class="module-table" id="module-table"></div></section>
+      <div class="metric-grid">
+        <article class="metric-card accent-blue">
+          <div class="metric-head"><span class="material-symbols-rounded">hub</span><span data-i18n="monitor">Monitor</span></div>
+          <div class="metric-value" id="metric-monitor">—</div>
+          <div class="metric-note" id="metric-monitor-note">—</div>
+        </article>
+        <article class="metric-card accent-green">
+          <div class="metric-head"><span class="material-symbols-rounded">memory</span><span data-i18n="architectures">Architectures</span></div>
+          <div class="metric-value" id="metric-arch">—</div>
+          <div class="metric-note" id="metric-arch-note">—</div>
+        </article>
+        <article class="metric-card accent-purple">
+          <div class="metric-head"><span class="material-symbols-rounded">extension</span><span data-i18n="modules">Modules</span></div>
+          <div class="metric-value" id="metric-modules">—</div>
+          <div class="metric-note" data-i18n="acrossActive">Across active architectures</div>
+        </article>
+        <article class="metric-card accent-amber">
+          <div class="metric-head"><span class="material-symbols-rounded">security</span><span data-i18n="root">Root</span></div>
+          <div class="metric-value small" id="metric-root">—</div>
+          <div class="metric-note" data-i18n="detectedImpl">Detected implementation</div>
+        </article>
+      </div>
+      <div class="section-header">
+        <span class="material-symbols-rounded">route</span>
+        <span data-i18n="runtimePaths">Runtime paths</span>
+        <span id="runtime-count">—</span>
+      </div>
+      <div class="arch-grid" id="arch-grid"></div>
+    </main>
+  </div>
+  <div class="lang-picker" id="lang-picker">
+    <div class="lang-picker-backdrop"></div>
+    <div class="lang-picker-sheet">
+      <div class="lang-picker-title" data-i18n="selectLanguage">Select Language</div>
+      <div class="lang-options">
+        <button class="lang-option" data-lang="en"><span class="lang-flag">🇺🇸</span><span>English</span><span class="lang-check material-symbols-rounded">check</span></button>
+        <button class="lang-option" data-lang="ar"><span class="lang-flag">🇸🇦</span><span>العربية</span><span class="lang-check material-symbols-rounded">check</span></button>
+        <button class="lang-option" data-lang="zh"><span class="lang-flag">🇨🇳</span><span>简体中文</span><span class="lang-check material-symbols-rounded">check</span></button>
+      </div>
+      <button class="lang-picker-close" data-i18n="close">Close</button>
     </div>
-  </body>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script type="module" src="script.js"></script>
+</body>
 </html>
