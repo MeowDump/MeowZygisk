@@ -27,9 +27,9 @@ if [ "$(which magisk)" ]; then
 fi
 
 create_sys_perm() {
-  mkdir -p $1
-  chmod 555 $1
-  chcon u:object_r:system_file:s0 $1
+  mkdir -p "$1"
+  chmod 555 "$1"
+  chcon u:object_r:system_file:s0 "$1"
 }
 
 export TMP_PATH=/data/adb/rezygisk
