@@ -1,6 +1,10 @@
 #!/system/bin/sh
 
+DEBUG=@DEBUG@
+
+if [ "$DEBUG" = true ]; then
 set -e
+fi
 
 MODDIR=${0%/*}
 if [ "$ZYGISK_ENABLED" ]; then

@@ -1,8 +1,10 @@
 #!/system/bin/sh
 
-set -e
-
 DEBUG=@DEBUG@
+
+if [ "$DEBUG" = true ]; then
+set -e
+fi
 
 MODDIR=${0%/*}
 
