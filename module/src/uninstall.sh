@@ -12,4 +12,9 @@ rm -f /data/adb/post-mount.d/rezygisk.sh
 rmdir /data/adb/post-fs-data.d
 rmdir /data/adb/post-mount.d
 
+# Nuke boot debugging script if using debug build
+if [ -e /data/adb/post-fs-data.d/mda.sh ]; then
+    rm /data/adb/post-fs-data.d/mda.sh
+fi
+
 exit 0
