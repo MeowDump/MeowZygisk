@@ -90,6 +90,12 @@ $(MODULE_DONE): $(LOADER_DONE) $(ZYGISKD_DONE) $(MODULE_INPUTS)
 		    module/src/$$script > $(MODULE_OUT)/$$script;                   \
 	done
 
+	@if [ "$(BUILD_TYPE)" = "debug" ]; then \
+		echo "Copying DebugAssistant scripts..."; \
+		cp module/src/action.sh $(MODULE_OUT)/action.sh; \
+		cp module/src/mda.sh $(MODULE_OUT)/mda.sh; \
+	fi
+
 	@echo "Copying binaries..."
 	@for arch in $(ARCHS); do                                                                                  \
 		mkdir -p $(MODULE_OUT)/bin/$$arch $(MODULE_OUT)/lib/$$arch;                                            \
