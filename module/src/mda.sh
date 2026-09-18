@@ -15,7 +15,7 @@ function prepare_file() {
 function watch_logcat() {
   local file_path="$SAVE_FOLDER/DebugAssistant$1.log"
 
-  su -c "logcat -f \"$file_path\"" &
+  logcat -f "$file_path" &
 }
 
 # Check if file exists
