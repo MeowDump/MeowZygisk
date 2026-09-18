@@ -18,7 +18,8 @@ fi
 
 echo "Latest debug log selected: $LATEST_DEBUG_LOG"
 
-NEW_LOG="/data/local/tmp/DebugAssistant-Redacted.log"
+NEW_LOG="/sdcard/Logs/DebugAssistant-Redacted.log"
+mkdir -p "/sdcard/Logs"
 if [ -f "$NEW_LOG" ]; then
   rm "$NEW_LOG"
 fi
@@ -61,3 +62,4 @@ sed -E                                                                   \
   "$LATEST_DEBUG_LOG" > "$NEW_LOG"
 
 echo "Redacted logs in $NEW_LOG"
+rm "$LATEST_DEBUG_LOG"
