@@ -12,7 +12,7 @@ ifeq ($(BUILD_TYPE),release)
 	TYPE_CFLAGS = -O2 -fno-omit-frame-pointer -Wno-unused -Wno-unused-parameter       \
 				  -fvisibility=hidden -fvisibility-inlines-hidden -fno-unwind-tables \
 				  -fno-asynchronous-unwind-tables -DNDEBUG
-	TYPE_LDFLAGS = -Wl,--exclude-libs,ALL -Wl,--strip-all
+	TYPE_LDFLAGS = -Wl,--exclude-libs,ALL
 else
 	TYPE_CFLAGS = -g -O0
 	TYPE_LDFLAGS =
