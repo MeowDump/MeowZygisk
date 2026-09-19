@@ -222,14 +222,18 @@ uintptr_t remote_call(int pid, struct user_regs_struct *regs, uintptr_t func_add
       long remain = (args_size - 6L) * sizeof(long);
       align_stack(regs, remain);
 
-      if (write_proc(pid, (uintptr_t) regs->REG_SP, &args[6], remain) != remain)
+      if (write_proc(pid, (uintptr_t) regs->REG_SP, &args[6], remain) != remain) {
         LOGE("failed to push arguments");
+        return 0;
+      }
     }
 
     regs->REG_SP -= sizeof(long);
 
-    if (write_proc(pid, (uintptr_t) regs->REG_SP, &return_addr, sizeof(return_addr)) != sizeof(return_addr))
+    if (write_proc(pid, (uintptr_t) regs->REG_SP, &return_addr, sizeof(return_addr)) != sizeof(return_addr)) {
       LOGE("failed to write return addr");
+      return 0;
+    }
 
     regs->REG_IP = func_addr;
   #elif defined(__i386__)
@@ -243,8 +247,10 @@ uintptr_t remote_call(int pid, struct user_regs_struct *regs, uintptr_t func_add
 
     regs->REG_SP -= sizeof(long);
 
-    if (write_proc(pid, (uintptr_t) regs->REG_SP, &return_addr, sizeof(return_addr)) != sizeof(return_addr))
+    if (write_proc(pid, (uintptr_t) regs->REG_SP, &return_addr, sizeof(return_addr)) != sizeof(return_addr)) {
       LOGE("failed to write return addr");
+      return 0;
+    }
 
     regs->REG_IP = func_addr;
   #elif defined(__aarch64__)
@@ -256,7 +262,10 @@ uintptr_t remote_call(int pid, struct user_regs_struct *regs, uintptr_t func_add
       long remain = (args_size - 8) * sizeof(long);
       align_stack(regs, remain);
 
-      write_proc(pid, (uintptr_t)regs->REG_SP, &args[8], remain);
+      if (write_proc(pid, (uintptr_t)regs->REG_SP, &args[8], remain) != remain) {
+        LOGE("failed to push arguments");
+        return 0;
+      }
     }
 
     regs->regs[30] = return_addr;
@@ -270,7 +279,10 @@ uintptr_t remote_call(int pid, struct user_regs_struct *regs, uintptr_t func_add
       long remain = (args_size - 4) * sizeof(long);
       align_stack(regs, remain);
 
-      write_proc(pid, (uintptr_t)regs->REG_SP, &args[4], remain);
+      if (write_proc(pid, (uintptr_t)regs->REG_SP, &args[4], remain) != remain) {
+        LOGE("failed to push arguments");
+        return 0;
+      }
     }
 
     regs->uregs[14] = return_addr;
@@ -299,7 +311,10 @@ uintptr_t remote_call(int pid, struct user_regs_struct *regs, uintptr_t func_add
   }
 
   int status = 0;
-  wait_for_trace(pid, &status, __WALL);
+  if (!wait_for_trace(pid, &status, __WALL)) {
+    LOGE("failed waiting for remote call");
+    return 0;
+  }
   if (!WIFSTOPPED(status)) {
     char status_str[64];
     parse_status(status, status_str, sizeof(status_str));
@@ -1034,7 +1049,7 @@ void tracee_skip_syscall(int pid) {
   #endif
 }
 
-void wait_for_trace(int pid, int *status, int flags) {
+bool wait_for_trace(int pid, int *status, int flags) {
   while (1) {
     pid_t result = waitpid(pid, status, flags);
     if (result == -1) {
@@ -1044,7 +1059,7 @@ void wait_for_trace(int pid, int *status, int flags) {
       /* INFO: Allow the caller can detect the failure */
       *status = 255 << 8; /* INFO: WIFEXITED, WEXITSTATUS=255 */
 
-      return;
+      return false;
     }
 
     /* INFO: We'll fork there. This will signal SIGCHLD. We just ignore and continue
@@ -1068,10 +1083,10 @@ void wait_for_trace(int pid, int *status, int flags) {
       LOGE("process %d not stopped for trace: %s", pid, status_str);
 
       /* INFO: Return the status to the caller instead of killing the tracer */
-      return;
+      return true;
     }
 
-    return;
+    return true;
   }
 }
 

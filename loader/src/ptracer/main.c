@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
+#include <sys/ptrace.h>
+#include <errno.h>
+#include <unistd.h>
 
 #include "daemon.h"
 #include "monitor.h"
@@ -27,8 +31,16 @@ int main(int argc, char **argv) {
 
       long pid = strtol(argv[2], 0, 0);
       if (!trace_zygote(pid, is_tango)) {
-        kill(pid, SIGKILL);
-
+        /*
+         * Never kill Zygote when an optional injection attempt fails.
+         * A failed tracer must leave the target resumable; killing Zygote
+         * can prevent Android from completing boot.
+         */
+        if (ptrace(PTRACE_DETACH, (pid_t)pid, 0, SIGCONT) == -1) {
+          if (errno != ESRCH && errno != ECHILD) kill((pid_t)pid, SIGCONT);
+        } else {
+          kill((pid_t)pid, SIGCONT);
+        }
         return 1;
       }
 

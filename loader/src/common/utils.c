@@ -16,6 +16,7 @@
 #include <sys/uio.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "elf_util.h"
 
@@ -706,6 +707,12 @@ bool wait_linker_ready(int pid, uintptr_t *out_libc_init_resolved, uintptr_t *ou
   free_maps(remote_map);
 
   uintptr_t initial_value = 0;
+  struct timespec wait_started;
+  if (clock_gettime(CLOCK_MONOTONIC, &wait_started) == -1) {
+    PLOGE("clock_gettime");
+    return false;
+  }
+
   if (read_proc(pid, *out_libc_init_got_slot, &initial_value, sizeof(initial_value)) != sizeof(initial_value)) {
     LOGE("Failed to read initial value of __libc_init GOT slot at 0x%" PRIxPTR, *out_libc_init_got_slot);
 
@@ -726,6 +733,21 @@ bool wait_linker_ready(int pid, uintptr_t *out_libc_init_resolved, uintptr_t *ou
       LOGI("Resolved __libc_init (0x%" PRIxPTR " -> 0x%" PRIxPTR ", pid %d)", initial_value, current_value, pid);
 
       return true;
+    }
+
+    struct timespec now;
+    if (clock_gettime(CLOCK_MONOTONIC, &now) == -1) {
+      PLOGE("clock_gettime");
+      return false;
+    }
+    time_t elapsed_seconds = now.tv_sec - wait_started.tv_sec;
+    long elapsed_nanos = now.tv_nsec - wait_started.tv_nsec;
+    if (elapsed_nanos < 0) {
+      elapsed_seconds--;
+    }
+    if (elapsed_seconds >= 15) {
+      LOGE("Timed out waiting for linker relocation in pid %d", pid);
+      return false;
     }
 
     if (ptrace(PTRACE_SYSCALL, pid, 0, 0) == -1) {

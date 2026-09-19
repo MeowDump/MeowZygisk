@@ -72,7 +72,7 @@ long remote_syscall(int pid, struct user_regs_struct *regs, uintptr_t syscall_ga
 
 void tracee_skip_syscall(int pid);
 
-void wait_for_trace(int pid, int *status, int flags);
+bool wait_for_trace(int pid, int *status, int flags);
 
 void parse_status(int status, char *buf, size_t len);
 

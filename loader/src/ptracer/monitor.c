@@ -148,9 +148,15 @@ bool rezygiskd_listener_init() {
     .sun_path = { 0 }
   };
 
-  size_t sun_path_len = sprintf(addr.sun_path, "%s/%s", rezygiskd_get_path(), SOCKET_NAME);
+  int path_len = snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/%s", rezygiskd_get_path(), SOCKET_NAME);
+  if (path_len < 0 || (size_t)path_len >= sizeof(addr.sun_path)) {
+    LOGE("monitor socket path is too long");
+    close(monitor_sock_fd);
+    monitor_sock_fd = -1;
+    return false;
+  }
 
-  socklen_t socklen = sizeof(sa_family_t) + sun_path_len;
+  socklen_t socklen = sizeof(sa_family_t) + (socklen_t)path_len;
   if (bind(monitor_sock_fd, (struct sockaddr *)&addr, socklen) == -1) {
     PLOGE("bind socket");
 
@@ -181,7 +187,18 @@ void rezygiskd_listener_callback() {
         } else if (tracing_state == STOPPED) {
           LOGI("Start tracing init");
 
-          ptrace(PTRACE_SEIZE, 1, 0, PTRACE_O_TRACEFORK);
+          if (ptrace(PTRACE_SEIZE, 1, 0, PTRACE_O_TRACEFORK) == -1) {
+            PLOGE("failed to seize init");
+            update_status("Unable to trace init");
+            break;
+          }
+
+          if (ptrace(PTRACE_INTERRUPT, 1, 0, 0) == -1) {
+            PLOGE("failed to interrupt init");
+            ptrace(PTRACE_DETACH, 1, 0, SIGCONT);
+            update_status("Unable to interrupt init");
+            break;
+          }
 
           tracing_state = TRACING;
         }
@@ -263,7 +280,9 @@ void rezygiskd_listener_callback() {
         environment_information->root_impl[root_impl_len] = '\0';
         LOGD("ReZygiskd%s root impl: %s", cmd == DAEMON64_SET_INFO ? "64" : "32", environment_information->root_impl);
 
-        if (read_uint32_t(monitor_sock_fd, &environment_information->modules_len) != sizeof(environment_information->modules_len)) {
+        uint32_t old_modules_len = environment_information->modules_len;
+        uint32_t new_modules_len = 0;
+        if (read_uint32_t(monitor_sock_fd, &new_modules_len) != sizeof(new_modules_len)) {
           LOGE("read ReZygiskd%s modules len", cmd == DAEMON64_SET_INFO ? "64" : "32");
 
           free((void *)environment_information->root_impl);
@@ -275,7 +294,7 @@ void rezygiskd_listener_callback() {
         if (environment_information->modules) {
           LOGD("freeing old ReZygiskd%s modules", cmd == DAEMON64_SET_INFO ? "64" : "32");
 
-          for (size_t i = 0; i < environment_information->modules_len; i++) {
+          for (size_t i = 0; i < old_modules_len; i++) {
             free((void *)environment_information->modules[i]);
           }
 
@@ -283,6 +302,7 @@ void rezygiskd_listener_callback() {
           environment_information->modules = NULL;
         }
 
+        environment_information->modules_len = new_modules_len;
         environment_information->modules = malloc(environment_information->modules_len * sizeof(char *));
         if (environment_information->modules == NULL) {
           PLOGE("malloc ReZygiskd%s modules", cmd == DAEMON64_SET_INFO ? "64" : "32");
@@ -726,9 +746,20 @@ void sigchld_listener_callback() {
             if (tracer != NULL) {
               LOGD("Stopping %d (program: %s, tracer: %s, tango: %s)", pid, program, tracer, is_tango ? "yes" : "no");
 
-              kill(pid, SIGSTOP);
-              ptrace(PTRACE_CONT, pid, 0, 0);
-              waitpid(pid, &sigchld_status, __WALL);
+              if (kill(pid, SIGSTOP) == -1) {
+                PLOGE("failed to stop process %d", pid);
+                break;
+              }
+              if (ptrace(PTRACE_CONT, pid, 0, 0) == -1) {
+                PLOGE("failed to continue process %d", pid);
+                break;
+              }
+              pid_t waited_pid = waitpid(pid, &sigchld_status, __WALL);
+              if (waited_pid != pid) {
+                if (waited_pid == -1) PLOGE("waitpid while stopping process %d", pid);
+                else LOGE("waitpid returned %d while stopping process %d", waited_pid, pid);
+                break;
+              }
 
               if (!STOPPED_WITH(SIGSTOP, 0)) {
                 LOGE("Failed to stop process %d", pid);
@@ -745,7 +776,7 @@ void sigchld_listener_callback() {
 
                 if (p == 0) {
                   char pid_str[32];
-                  sprintf(pid_str, "%d", pid);
+                  snprintf(pid_str, sizeof(pid_str), "%d", pid);
 
                   LOGI("exec tracer command: %s trace %s --restart%s", tracer, pid_str, is_tango ? " --tango" : "");
 
@@ -766,12 +797,12 @@ void sigchld_listener_callback() {
 
                   PLOGE("exec");
 
-                  kill(pid, SIGKILL);
+                  kill(pid, SIGCONT);
                   exit(1);
                 } else if (p == -1) {
                   PLOGE("fork");
 
-                  kill(pid, SIGKILL);
+                  kill(pid, SIGCONT);
                 }
               }
             }
@@ -934,10 +965,10 @@ static bool update_status(const char *message) {
       fprintf(json, "  \"zygote\": {\n");
       if (status64.supported) {
         fprintf(json, "    \"64\": %d", status64.zygote_injected);
-        if (status32.supported && status32.zygote_injected) fprintf(json, ",\n");
+        if (status32.supported) fprintf(json, ",\n");
         else fprintf(json, "\n");
       }
-      if (status32.supported && status32.zygote_injected) {
+      if (status32.supported) {
         fprintf(json, "    \"32\": %d\n", status32.zygote_injected);
       }
       fprintf(json, "  }\n");
@@ -1056,9 +1087,13 @@ int send_control_command(enum rezygiskd_command cmd) {
     .sun_path = { 0 }
   };
 
-  size_t sun_path_len = snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/%s", rezygiskd_get_path(), SOCKET_NAME);
+  int path_len = snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/%s", rezygiskd_get_path(), SOCKET_NAME);
+  if (path_len < 0 || (size_t)path_len >= sizeof(addr.sun_path)) {
+    close(sockfd);
+    return -1;
+  }
 
-  socklen_t socklen = sizeof(sa_family_t) + sun_path_len;
+  socklen_t socklen = sizeof(sa_family_t) + (socklen_t)path_len;
 
   uint8_t cmd_op = cmd;
   ssize_t nsend = sendto(sockfd, (void *)&cmd_op, sizeof(cmd_op), 0, (struct sockaddr *)&addr, socklen);

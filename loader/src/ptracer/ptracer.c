@@ -83,6 +83,13 @@ bool inject_on_main(int pid, const char *lib_path, uintptr_t libc_init_target, u
   }
 
   void *libc_return_addr = find_module_return_addr(map, "libc.so");
+  if (libc_return_addr == NULL) {
+    LOGE("Failed to find a libc return address");
+    free_maps(local_map);
+    free_maps(map);
+    return false;
+  }
+
   uintptr_t remote_base = 0, injector_entry = 0;
   size_t remote_size = 0;
 
@@ -103,7 +110,13 @@ bool inject_on_main(int pid, const char *lib_path, uintptr_t libc_init_target, u
     (long)remote_size,
     is_tango ? 1 : 0
   };
-  remote_call(pid, &regs, injector_entry, (uintptr_t)libc_return_addr, args, 3);
+  uintptr_t remote_result = remote_call(pid, &regs, injector_entry, (uintptr_t)libc_return_addr, args, 3);
+  if (remote_result == 0) {
+    LOGE("Remote injector call failed");
+    backup.REG_IP = (long)libc_init_target;
+    set_regs(pid, &backup);
+    return false;
+  }
 
   bool injector_ok = false;
   #if defined(__arm__)
@@ -145,23 +158,23 @@ bool trace_zygote(int pid, bool tango_flag) {
   int status = 0;
 
   struct kernel_version version = parse_kversion();
+  long seize_options = 0;
   if (version.major > 3 || (version.major == 3 && version.minor >= 8)) {
-    if (ptrace(PTRACE_SEIZE, pid, 0, PTRACE_O_EXITKILL | PTRACE_O_TRACESECCOMP) == -1) {
-      PLOGE("seize for tango");
-
-      return false;
-    }
-
-    WAIT_OR_DIE;
-  } else {
-    if (ptrace(PTRACE_SEIZE, pid, 0, 0) == -1) {
-      PLOGE("seize");
-
-      return false;
-    }
-
-    WAIT_OR_DIE;
+    seize_options = PTRACE_O_TRACESECCOMP;
   }
+
+  if (ptrace(PTRACE_SEIZE, pid, 0, seize_options) == -1) {
+    PLOGE("seize");
+    return false;
+  }
+
+  if (ptrace(PTRACE_INTERRUPT, pid, 0, 0) == -1) {
+    PLOGE("interrupt after seize");
+    ptrace(PTRACE_DETACH, pid, 0, SIGCONT);
+    return false;
+  }
+
+  WAIT_OR_DIE;
 
   if (kill(pid, SIGCONT) == -1) {
     PLOGE("SIGCONT");
@@ -197,7 +210,7 @@ bool trace_zygote(int pid, bool tango_flag) {
     char *lib_path = "/data/adb/modules/rezygisk/lib" LP_SELECT("", "64") "/libzygisk.so";
     if (!inject_on_main(pid, lib_path, libc_init_resolved, libc_init_got_slot, tango_flag)) {
       LOGE("failed to inject");
-
+      ptrace(PTRACE_DETACH, pid, 0, SIGCONT);
       return false;
     }
 
