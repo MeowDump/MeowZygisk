@@ -110,11 +110,17 @@ bool inject_on_main(int pid, const char *lib_path, uintptr_t libc_init_target, u
     (long)remote_size,
     is_tango ? 1 : 0
   };
+  LOGD("starting remote injector call: entry=%p return=%p base=%p size=%zu tango=%d",
+       (void *)injector_entry, libc_return_addr, (void *)remote_base, remote_size, is_tango ? 1 : 0);
   uintptr_t remote_result = remote_call(pid, &regs, injector_entry, (uintptr_t)libc_return_addr, args, 3);
   if (remote_result == 0) {
-    LOGE("Remote injector call failed");
-    backup.REG_IP = (long)libc_init_target;
-    set_regs(pid, &backup);
+    LOGE("Remote injector call failed (entry=%p return=%p ip=%p)",
+         (void *)injector_entry, libc_return_addr, (void *)regs.REG_IP);
+    if (!set_regs(pid, &backup)) {
+      LOGE("Failed to restore complete register state after remote injector failure");
+    } else {
+      LOGD("Restored complete register state after remote injector failure");
+    }
     return false;
   }
 
@@ -128,14 +134,19 @@ bool inject_on_main(int pid, const char *lib_path, uintptr_t libc_init_target, u
   if (!injector_ok) {
     LOGE("injector entry faulted at %p", (void *)regs.REG_IP);
 
-    backup.REG_IP = (long)libc_init_target;
-    set_regs(pid, &backup);
+    if (!set_regs(pid, &backup)) {
+      LOGE("Failed to restore complete register state after injector fault");
+    } else {
+      LOGD("Restored complete register state after injector fault");
+    }
 
     return false;
   }
 
-  backup.REG_IP = (long)libc_init_target;
-  if (!set_regs(pid, &backup)) return false;
+  if (!set_regs(pid, &backup)) {
+    LOGE("Failed to restore complete register state after injection");
+    return false;
+  }
 
   LOGD("injection complete, instruction pointer reset to __libc_init (%p)", (void *)libc_init_target);
 

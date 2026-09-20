@@ -312,8 +312,13 @@ uintptr_t remote_call(int pid, struct user_regs_struct *regs, uintptr_t func_add
 
   int status = 0;
   if (!wait_for_trace(pid, &status, __WALL)) {
-    LOGE("failed waiting for remote call");
+    LOGE("failed waiting for remote call (status=0x%x)", status);
     return 0;
+  }
+  {
+    char status_str[64];
+    parse_status(status, status_str, sizeof(status_str));
+    LOGD("remote call wait completed: %s, ip=%p", status_str, (void *)regs->REG_IP);
   }
   if (!WIFSTOPPED(status)) {
     char status_str[64];
@@ -1067,13 +1072,21 @@ bool wait_for_trace(int pid, int *status, int flags) {
     if (WIFSTOPPED(*status) && WSTOPSIG(*status) == SIGCHLD) {
       LOGI("process %d stopped by SIGCHLD, continue", pid);
 
-      ptrace(PTRACE_CONT, pid, 0, 0);
+      errno = 0;
+      if (ptrace(PTRACE_CONT, pid, 0, 0) == -1) {
+        PLOGE("PTRACE_CONT after SIGCHLD for %d", pid);
+        return false;
+      }
 
       continue;
     } else if (*status >> 8 == (SIGTRAP | (PTRACE_EVENT_SECCOMP << 8))) {
       tracee_skip_syscall(pid);
 
-      ptrace(PTRACE_CONT, pid, 0, 0);
+      errno = 0;
+      if (ptrace(PTRACE_CONT, pid, 0, 0) == -1) {
+        PLOGE("PTRACE_CONT after seccomp stop for %d", pid);
+        return false;
+      }
 
       continue;
     } else if (!WIFSTOPPED(*status)) {

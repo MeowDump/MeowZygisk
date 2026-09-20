@@ -90,11 +90,9 @@ $(MODULE_DONE): $(LOADER_DONE) $(ZYGISKD_DONE) $(MODULE_INPUTS)
 		    module/src/$$script > $(MODULE_OUT)/$$script;                   \
 	done
 
-	@if [ "$(BUILD_TYPE)" = "debug" ]; then \
-		echo "Copying DebugAssistant scripts..."; \
-		cp module/src/action.sh $(MODULE_OUT)/action.sh; \
-		cp module/src/mda.sh $(MODULE_OUT)/mda.sh; \
-	fi
+	@echo "Copying DebugAssistant scripts..."; \
+	cp module/src/action.sh $(MODULE_OUT)/action.sh; \
+	cp module/src/mda.sh $(MODULE_OUT)/mda.sh
 
 	@echo "Copying binaries..."
 	@for arch in $(ARCHS); do                                                                                  \
@@ -147,3 +145,4 @@ clean:
 	rm -rf $(BUILD_DIR)
 	$(MAKE) -C loader clean BUILD_DIR=$(BUILD_DIR)
 	$(MAKE) -C zygiskd clean BUILD_DIR=$(BUILD_DIR)
+	

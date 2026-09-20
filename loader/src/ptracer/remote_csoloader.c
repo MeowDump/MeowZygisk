@@ -47,6 +47,108 @@ static long remote_mmap_offset_arg(off_t file_offset, size_t page_size) {
   #endif
 }
 
+
+static long remote_memfd_from_local(int pid, struct user_regs_struct *regs,
+                                   uintptr_t syscall_gadget, int local_fd,
+                                   size_t page_size) {
+#if defined(SYS_memfd_create) && defined(SYS_write) && defined(SYS_mmap) && defined(SYS_munmap) && defined(SYS_lseek)
+  const char name[] = "rezygisk";
+  long args[6] = {0};
+  long remote_fd = -1;
+  uintptr_t scratch = 0;
+  long result = -1;
+  char buffer[4096];
+  off_t offset = 0;
+
+  if (local_fd < 0 || page_size == 0) {
+    LOGE("Invalid local fd or page size for memfd fallback");
+    return -1;
+  }
+
+  uintptr_t remote_name = regs->REG_SP - 128;
+  if (write_proc(pid, remote_name, name, sizeof(name)) != (ssize_t)sizeof(name)) {
+    LOGE("Failed to write remote memfd name");
+    return -1;
+  }
+
+  args[0] = (long)remote_name;
+  args[1] = MFD_CLOEXEC;
+  remote_fd = remote_syscall(pid, regs, syscall_gadget, SYS_memfd_create, args, 2);
+  if (remote_fd < 0) {
+    LOGE("Remote memfd_create failed: %ld", remote_fd);
+    return remote_fd;
+  }
+
+  args[0] = 0;
+  args[1] = (long)page_size;
+  args[2] = PROT_READ | PROT_WRITE;
+  args[3] = MAP_PRIVATE | MAP_ANONYMOUS;
+  args[4] = -1;
+  args[5] = 0;
+  scratch = (uintptr_t)remote_syscall(pid, regs, syscall_gadget, SYS_mmap, args, 6);
+  if (scratch == 0 || scratch == (uintptr_t)MAP_FAILED) {
+    LOGE("Remote scratch mmap failed");
+    goto cleanup;
+  }
+
+  for (;;) {
+    ssize_t n = pread(local_fd, buffer, sizeof(buffer), offset);
+    if (n < 0) {
+      LOGE("Local read failed while creating memfd");
+      goto cleanup;
+    }
+    if (n == 0) break;
+
+    if (write_proc(pid, scratch, buffer, (size_t)n) != n) {
+      LOGE("Failed to copy ELF data into remote scratch mapping");
+      goto cleanup;
+    }
+
+    args[0] = remote_fd;
+    args[1] = (long)scratch;
+    args[2] = n;
+    long written = remote_syscall(pid, regs, syscall_gadget, SYS_write, args, 3);
+    if (written != n) {
+      LOGE("Remote memfd write failed: expected %zd, got %ld", n, written);
+      goto cleanup;
+    }
+    offset += n;
+  }
+
+  args[0] = (long)scratch;
+  args[1] = (long)page_size;
+  if (remote_syscall(pid, regs, syscall_gadget, SYS_munmap, args, 2) < 0) {
+    LOGW("Remote scratch munmap failed");
+  }
+  scratch = 0;
+
+  args[0] = remote_fd;
+  args[1] = 0;
+  args[2] = SEEK_SET;
+  if (remote_syscall(pid, regs, syscall_gadget, SYS_lseek, args, 3) < 0) {
+    LOGE("Remote memfd seek failed");
+    goto cleanup;
+  }
+
+  result = remote_fd;
+  remote_fd = -1;
+
+cleanup:
+  if (scratch != 0) {
+    args[0] = (long)scratch;
+    args[1] = (long)page_size;
+    remote_syscall(pid, regs, syscall_gadget, SYS_munmap, args, 2);
+  }
+  if (remote_fd >= 0) {
+    args[0] = remote_fd;
+    remote_syscall(pid, regs, syscall_gadget, SYS_close, args, 1);
+  }
+  return result;
+#else
+  (void)pid; (void)regs; (void)syscall_gadget; (void)local_fd; (void)page_size;
+  return -1;
+#endif
+}
 /* INFO: Parse ELF headers and compute the total mapping size for PT_LOAD segments. */
 static bool compute_load_layout(int fd, size_t page_size, ElfW(Ehdr) *eh,
                                 ElfW(Phdr) **out_phdr, ElfW(Addr) *out_min_vaddr,
@@ -753,12 +855,15 @@ bool remote_csoloader_load_and_resolve_entry(int pid, struct user_regs_struct *r
 
   long remote_fd = remote_syscall(pid, regs, syscall_gadget, SYS_openat, args, 4);
   if (remote_fd < 0) {
-    LOGE("Failed to open remote file: %s (%ld)", lib_path, remote_fd);
-
-    free(phdr);
-    close(fd);
-
-    return false;
+    LOGW("Remote openat failed for %s (%ld), trying anonymous memfd fallback", lib_path, remote_fd);
+    remote_fd = remote_memfd_from_local(pid, regs, syscall_gadget, fd, page_size);
+    if (remote_fd < 0) {
+      LOGE("Remote file loading failed for %s (%ld)", lib_path, remote_fd);
+      free(phdr);
+      close(fd);
+      return false;
+    }
+    LOGI("Loaded %s through anonymous memfd", lib_path);
   }
 
   void *remote_path_zerod = calloc(1, ALIGN_UP(path_len, 16));
