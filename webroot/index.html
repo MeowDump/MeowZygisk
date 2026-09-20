@@ -44,40 +44,98 @@
         </div>
         <button class="hero-refresh" id="hero-refresh"><span class="material-symbols-rounded">sync</span><span data-i18n="refresh">Refresh</span></button>
       </div>
-      <div class="section-header">
-        <span class="material-symbols-rounded">extension</span>
-        <span data-i18n="loadedModules">Loaded modules</span>
-        <span id="module-total">0</span>
+      <div class="debug-warning" id="debug-warning" hidden></div>
+      <div class="recovery-card" id="recovery-card" hidden>
+        <div class="recovery-icon"><span class="material-symbols-rounded">support_agent</span></div>
+        <div class="recovery-copy">
+          <strong data-i18n="diagnosticProblem">Something went wrong</strong>
+          <span id="recovery-message" data-i18n="diagnosticProblemDesc">The UI could not read the runtime information correctly.</span>
+        </div>
+        <div class="recovery-actions">
+          <button class="small-action" id="recovery-generate"><span class="material-symbols-rounded">terminal</span><span data-i18n="generateLogs">Generate logs</span></button>
+          <button class="small-action" id="recovery-report"><span class="material-symbols-rounded">bug_report</span><span data-i18n="reportBug">Report a bug</span></button>
+        </div>
       </div>
-      <section class="panel-card table-card"><div class="module-table" id="module-table"></div></section>
-      <div class="metric-grid">
+
+      <div class="section-header">
+        <span class="material-symbols-rounded">hub</span>
+        <span data-i18n="monitor">Monitor</span>
+      </div>
+      <div class="metric-grid monitor-metrics">
         <article class="metric-card accent-blue">
           <div class="metric-head"><span class="material-symbols-rounded">hub</span><span data-i18n="monitor">Monitor</span></div>
           <div class="metric-value" id="metric-monitor">—</div>
-          <div class="metric-note" id="metric-monitor-note">—</div>
         </article>
         <article class="metric-card accent-green">
           <div class="metric-head"><span class="material-symbols-rounded">memory</span><span data-i18n="architectures">Architectures</span></div>
           <div class="metric-value" id="metric-arch">—</div>
-          <div class="metric-note" id="metric-arch-note">—</div>
         </article>
         <article class="metric-card accent-purple">
           <div class="metric-head"><span class="material-symbols-rounded">extension</span><span data-i18n="modules">Modules</span></div>
           <div class="metric-value" id="metric-modules">—</div>
-          <div class="metric-note" data-i18n="acrossActive">Across active architectures</div>
         </article>
         <article class="metric-card accent-amber">
           <div class="metric-head"><span class="material-symbols-rounded">security</span><span data-i18n="root">Root</span></div>
           <div class="metric-value small" id="metric-root">—</div>
-          <div class="metric-note" data-i18n="detectedImpl">Detected implementation</div>
         </article>
       </div>
+
+      <div>
+        <div class="section-header">
+          <span class="material-symbols-rounded">extension</span>
+          <span data-i18n="loadedModules">Loaded modules</span>
+          <span id="module-total">0</span>
+        </div>
+        <section class="panel-card table-card"><div class="module-table" id="module-table"></div></section>
+      </div>
+
+      <div class="section-header">
+        <span class="material-symbols-rounded">build</span>
+        <span data-i18n="actions">Actions</span>
+      </div>
+      <section class="panel-card action-card">
+        <button class="action-row" id="debug-toggle-btn">
+          <span class="action-icon"><span class="material-symbols-rounded">bug_report</span></span>
+          <span class="action-copy"><strong data-i18n="debugLogging">Debug logging</strong><small data-i18n="debugLoggingDesc">Enable or disable ReZygisk debug logging.</small></span>
+          <span class="toggle" id="debug-toggle"><span></span></span>
+        </button>
+        <button class="action-row" id="run-action-btn">
+          <span class="action-icon"><span class="material-symbols-rounded">terminal</span></span>
+          <span class="action-copy"><strong data-i18n="generateLogs">Generate logs</strong><small data-i18n="generateLogsDesc">Run the ReZygisk action script and show its output.</small></span>
+          <span class="material-symbols-rounded action-arrow">chevron_right</span>
+        </button>
+        <button class="action-row" id="copy-information-btn">
+          <span class="action-icon"><span class="material-symbols-rounded">content_copy</span></span>
+          <span class="action-copy"><strong data-i18n="copyInformation">Copy information</strong><small data-i18n="copyInformationDesc">Copy the information currently displayed by the UI.</small></span>
+          <span class="material-symbols-rounded action-arrow">content_copy</span>
+        </button>
+        <button class="action-row" id="report-bug-btn">
+          <span class="action-icon"><span class="material-symbols-rounded">bug_report</span></span>
+          <span class="action-copy"><strong data-i18n="reportBug">Report a bug</strong><small data-i18n="reportBugDesc">Open the developer support chat.</small></span>
+          <span class="material-symbols-rounded action-arrow">open_in_new</span>
+        </button>
+      </section>
+
       <div class="section-header">
         <span class="material-symbols-rounded">route</span>
         <span data-i18n="runtimePaths">Runtime paths</span>
         <span id="runtime-count">—</span>
       </div>
       <div class="arch-grid" id="arch-grid"></div>
+      <div class="device-section">
+        <div class="section-header">
+          <span class="material-symbols-rounded">smartphone</span>
+          <span data-i18n="deviceInformation">Device information</span>
+        </div>
+        <section class="panel-card device-card">
+          <div class="device-grid">
+            <div class="device-item"><span data-i18n="deviceName">Device</span><strong id="device-name">—</strong></div>
+            <div class="device-item"><span data-i18n="androidVersion">Android</span><strong id="android-version">—</strong></div>
+            <div class="device-item"><span data-i18n="selinux">SELinux</span><strong id="selinux-status">—</strong></div>
+            <div class="device-item"><span data-i18n="treatWheel">Treat Wheel</span><strong id="treat-wheel">—</strong></div>
+          </div>
+        </section>
+      </div>
     </main>
   </div>
   <div class="lang-picker" id="lang-picker">
