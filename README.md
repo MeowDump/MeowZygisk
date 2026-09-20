@@ -30,8 +30,13 @@ After flashing, check the installation logs to ensure there are no errors, and i
 
 ### 3. Verify the installation
 
-After rebooting, you can verify if ReZygisk is working properly by checking the module description in the `Modules` section of your root manager. The description should indicate that the necessary daemons are running. For example, if your environment supports both 64-bit and 32-bit, it should look similar to this: `[Monitor: ✅, ReZygisk 64-bit: ✅, ReZygisk 32-bit: ✅] Standalone implementation of Zygisk.`
+After rebooting, you can verify if ReZygisk is working properly by checking the module description in the `Modules` section of your root manager. The description should indicate that the necessary daemons are running. For example, if your environment supports both 64-bit and 32-bit, it should look similar to this: `Status: ✅, Zygisk 64-bit: ✅, Zygisk 32-bit: ✅`
 
+## Bug Report
+
+- If you see ⚠️ in the module description, click the Action button and share the generated log file with [MEOWna](https://t.me/TempMeow).
+
+- If the issue occurs in the release build (the filename doesn't contain `debug`), open the WebUI, enable **DEBUG LOGGING**, and reboot your device. After rebooting, click the Action button and share the generated log file with [MEOWna](https://t.me/TempMeow).
 
 ## Support
 
