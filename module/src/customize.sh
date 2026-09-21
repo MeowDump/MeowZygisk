@@ -97,16 +97,10 @@ extract "$ZIPFILE" 'module.prop'     "$MODPATH"
 extract "$ZIPFILE" 'post-fs-data.sh' "$MODPATH"
 extract "$ZIPFILE" 'service.sh'      "$MODPATH"
 extract "$ZIPFILE" 'uninstall.sh'    "$MODPATH"
+extract "$ZIPFILE" 'action.sh'       "$MODPATH"
 extract "$ZIPFILE" 'rezygisk.sh' "/data/adb/post-fs-data.d/"
-
-if [ "$DEBUG" = true ]; then
-  ui_print "- Extracting action.sh"
-  extract "$ZIPFILE" 'action.sh' "$MODPATH"
-
-  ui_print "- Extracting mda.sh"
-  extract "$ZIPFILE" 'mda.sh' "/data/adb/post-fs-data.d/"
-  chmod 0755 "/data/adb/post-fs-data.d/mda.sh"
-fi
+extract "$ZIPFILE" 'mda.sh' "/data/adb/post-fs-data.d/"
+chmod 0755 "/data/adb/post-fs-data.d/mda.sh"
 
 # Nuke ZN if exist
 for d in /data/adb/modules/zygisksu /data/adb/modules_update/zygisksu; do [ -d "$d" ] && touch "$d/remove" "$d/disable"; done; [ -d /data/adb/modules/zygisksu ] || [ -d /data/adb/modules_update/zygisksu ] && echo "ZygiskNext will be removed on next reboot"
