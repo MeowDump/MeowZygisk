@@ -2,6 +2,12 @@
 SKIPUNZIP=1
 
 DEBUG=@DEBUG@
+
+if [ "$DEBUG" = true ]; then
+  mkdir -p /data/adb/rezygisk
+  touch /data/adb/rezygisk/log
+fi
+
 MIN_KSU_VERSION=@MIN_KSU_VERSION@
 MIN_KSUD_VERSION=@MIN_KSUD_VERSION@
 MIN_MAGISK_VERSION=@MIN_MAGISK_VERSION@
