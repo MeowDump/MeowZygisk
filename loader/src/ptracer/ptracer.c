@@ -62,6 +62,7 @@ bool inject_on_main(int pid, const char *lib_path, uintptr_t libc_init_target, u
 
   struct user_regs_struct backup;
   memcpy(&backup, &regs, sizeof(regs));
+  backup.REG_IP = libc_init_target;
 
   char pid_str[11];
   snprintf(pid_str, sizeof(pid_str), "%d", pid);

@@ -12,14 +12,14 @@ void entry(void *addr, size_t size, int tango_flag) {
   start_addr = addr;
   block_size = size;
 
-  if (!rezygiskd_zygote_injected()) {
-    LOGE("ReZygiskd is not running");
-    return;
-  }
-
   LOGD("start plt hooking");
   if (!hook_functions()) {
     LOGE("Failed to initialize PLT hooks; leaving zygote unmodified");
+    return;
+  }
+
+  if (!rezygiskd_zygote_injected()) {
+    LOGE("Failed to notify ReZygiskd that Zygisk was injected");
     return;
   }
 
