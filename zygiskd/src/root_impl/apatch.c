@@ -146,7 +146,7 @@ bool apatch_uid_granted_root(uid_t uid) {
   if (!_apatch_get_package_config(&config)) return false;
 
   for (size_t i = 0; i < config.size; i++) {
-    if (config.configs[i].uid != uid) continue;
+    if (config.configs[i].uid != APP_ID(uid)) continue;
 
     /* INFO: This allow us to copy the information to avoid use-after-free */
     bool root_granted = config.configs[i].root_granted;
@@ -166,7 +166,7 @@ bool apatch_uid_should_umount(uid_t uid, const char *const process) {
   if (!_apatch_get_package_config(&config)) return false;
 
   for (size_t i = 0; i < config.size; i++) {
-    if (config.configs[i].uid != uid) continue;
+    if (config.configs[i].uid != APP_ID(uid)) continue;
 
     /* INFO: This allow us to copy the information to avoid use-after-free */
     bool umount_needed = config.configs[i].umount_needed;
@@ -205,14 +205,12 @@ bool apatch_uid_should_umount(uid_t uid, const char *const process) {
 }
 
 bool apatch_uid_is_manager(uid_t uid) {
-  struct stat st;
-  if (stat("/data/user_de/0/me.bmax.apatch", &st) == -1) {
-    if (errno != ENOENT) {
-      LOGE("Failed to stat APatch manager data directory: %s", strerror(errno));
-    }
+  uid_t manager_uid = uid_from_pkg("me.bmax.apatch");
+  if (!manager_uid) {
+    LOGE("Failed to retrieve uid for me.bmax.apatch");
 
     return false;
   }
 
-  return st.st_uid == uid;
+  return manager_uid == APP_ID(uid);
 }

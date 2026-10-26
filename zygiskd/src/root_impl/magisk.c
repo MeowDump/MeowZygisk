@@ -3,7 +3,6 @@
 
 #include <errno.h>
 #include <unistd.h>
-#include <sys/stat.h>
 
 #include "magisk.h"
 
@@ -99,18 +98,16 @@ bool magisk_uid_is_manager(uid_t uid) {
     return false;
   }
 
-  char stat_path[PATH_MAX] = "/data/user_de/0/com.topjohnwu.magisk";
+  char pkg[NAME_MAX + 1] = "com.topjohnwu.magisk";
   if (output[0] != '\0')
-    snprintf(stat_path, sizeof(stat_path), "/data/user_de/0/%s", output + strlen("value="));
+    snprintf(pkg, sizeof(pkg), "%s", output + strlen("value="));
 
-  struct stat st;
-  if (stat(stat_path, &st) == -1) {
-    if (errno != ENOENT) {
-      LOGE("Failed to stat %s: %s", stat_path, strerror(errno));
-    }
+  uid_t manager_uid = uid_from_pkg(pkg);
+  if (!manager_uid) {
+    LOGE("Failed to retrieve uid for %s", pkg);
 
     return false;
   }
 
-  return st.st_uid == uid;
+  return manager_uid == APP_ID(uid);
 }

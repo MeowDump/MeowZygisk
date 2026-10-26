@@ -26,6 +26,18 @@ struct Context {
   size_t len;
 };
 
+struct rzd_msg_header {
+  uint8_t cmd;
+  uint32_t len;
+  char data[0];
+} __attribute__((packed));
+
+struct rzd_info_payload {
+  char impl[LONGEST_ROOT_IMPL_NAME];
+  uint32_t modules_count;
+  char data[0];
+} __attribute__((packed));
+
 #define PATH_MODULES_DIR "/data/adb/modules"
 #define TMP_PATH "/data/adb/rezygisk"
 #define CONTROLLER_SOCKET TMP_PATH "/init_monitor"
@@ -110,6 +122,18 @@ static void load_modules(struct Context *restrict context) {
       LOGE("Failed to strdup for the module \"%s\": %s", name, strerror(errno));
 
       close(lib_fd);
+
+      for (size_t i = 0; i < context->len; i++) {
+        free(context->modules[i].name);
+        if (context->modules[i].companion >= 0) close(context->modules[i].companion);
+        if (context->modules[i].lib_fd >= 0) close(context->modules[i].lib_fd);
+      }
+
+      free(context->modules);
+      context->modules = NULL;
+      context->len = 0;
+
+      closedir(dir);
 
       return;
     }
@@ -267,39 +291,63 @@ void zygiskd_start(char *restrict argv[]) {
   struct root_impl impl;
   get_impl(&impl);
   if (impl.impl == None || impl.impl == Multiple) {
-    unix_datagram_sendto(CONTROLLER_SOCKET, &(uint8_t){ DAEMON_SET_ERROR_INFO }, sizeof(uint8_t));
-
     const char *msg = NULL;
     if (impl.impl == None) msg = "Unsupported environment: Unknown root implementation";
     else msg = "Unsupported environment: Multiple root implementations found";
 
     LOGE("%s", msg);
 
-    uint32_t msg_len = (uint32_t)strlen(msg);
-    unix_datagram_sendto(CONTROLLER_SOCKET, &msg_len, sizeof(msg_len));
-    unix_datagram_sendto(CONTROLLER_SOCKET, msg, msg_len);
+    size_t err_len = strlen(msg) + 1;
+
+    struct rzd_msg_header *message = malloc(sizeof(struct rzd_msg_header) + err_len);
+    if (message == NULL) {
+      LOGE("Failed allocating error info message: %s", strerror(errno));
+
+      exit(EXIT_FAILURE);
+    }
+
+    message->cmd = DAEMON_SET_ERROR_INFO;
+    message->len = (uint32_t)err_len;
+    memcpy(message->data, msg, err_len);
+
+    unix_datagram_sendto(CONTROLLER_SOCKET, message, sizeof(struct rzd_msg_header) + err_len);
+    free(message);
 
     exit(EXIT_FAILURE);
   } else {
     load_modules(&context);
 
-    unix_datagram_sendto(CONTROLLER_SOCKET, &(uint8_t){ DAEMON_SET_INFO }, sizeof(uint8_t));
-
-    char impl_name[LONGEST_ROOT_IMPL_NAME];
-    stringify_root_impl_name(impl, impl_name);
-
-    uint32_t root_impl_len = (uint32_t)strlen(impl_name);
-    unix_datagram_sendto(CONTROLLER_SOCKET, &root_impl_len, sizeof(root_impl_len));
-    unix_datagram_sendto(CONTROLLER_SOCKET, impl_name, root_impl_len);
-
-    uint32_t modules_len = (uint32_t)context.len;
-    unix_datagram_sendto(CONTROLLER_SOCKET, &modules_len, sizeof(modules_len));
-
+    size_t info_len = sizeof(struct rzd_info_payload);
     for (size_t i = 0; i < context.len; i++) {
-      uint32_t module_name_len = (uint32_t)strlen(context.modules[i].name);
-      unix_datagram_sendto(CONTROLLER_SOCKET, &module_name_len, sizeof(module_name_len));
-      unix_datagram_sendto(CONTROLLER_SOCKET, context.modules[i].name, module_name_len);
+      info_len += strlen(context.modules[i].name) + 1;
     }
+
+    struct rzd_msg_header *message = malloc(sizeof(struct rzd_msg_header) + info_len);
+    if (message == NULL) {
+      LOGE("Failed allocating info message: %s", strerror(errno));
+
+      free_modules(&context);
+      root_impl_cleanup();
+
+      return;
+    }
+
+    message->cmd = DAEMON_SET_INFO;
+    message->len = (uint32_t)info_len;
+
+    struct rzd_info_payload *info = (void *)message->data;
+    stringify_root_impl_name(impl, info->impl);
+    info->modules_count = (uint32_t)context.len;
+
+    char *raw_payload = info->data;
+    for (size_t i = 0; i < context.len; i++) {
+      size_t module_name_len = strlen(context.modules[i].name);
+      memcpy(raw_payload, context.modules[i].name, module_name_len + 1);
+      raw_payload += module_name_len + 1;
+    }
+
+    unix_datagram_sendto(CONTROLLER_SOCKET, message, sizeof(struct rzd_msg_header) + info_len);
+    free(message);
 
     LOGI("Sent root implementation and modules information to controller socket");
   }
@@ -347,7 +395,11 @@ void zygiskd_start(char *restrict argv[]) {
 
     switch (action) {
       case ZygoteInjected: {
-        unix_datagram_sendto(CONTROLLER_SOCKET, &(uint8_t){ ZYGOTE_INJECTED }, sizeof(uint8_t));
+        struct rzd_msg_header hdr = {
+          .cmd = ZYGOTE_INJECTED,
+          .len = 0
+        };
+        unix_datagram_sendto(CONTROLLER_SOCKET, &hdr, sizeof(hdr));
 
         break;
       }

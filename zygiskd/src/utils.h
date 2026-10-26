@@ -48,8 +48,10 @@
     return_type;                                                                                                 \
   }
 
+#define APP_ID(uid) uid % 100000
+
 #define IS_ISOLATED_SERVICE(uid)      \
-  ((uid) >= 90000 && (uid) < 1000000)
+  ((APP_ID(uid)) >= 90000)
 
 #define write_func_def(type)              \
   ssize_t write_## type(int fd, type val)

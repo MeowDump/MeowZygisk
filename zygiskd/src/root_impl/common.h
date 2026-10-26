@@ -35,6 +35,8 @@ bool uid_granted_root(uid_t uid);
 
 bool uid_should_umount(uid_t uid, const char *const process);
 
+uid_t uid_from_pkg(const char *restrict pkg);
+
 bool uid_is_manager(uid_t uid);
 
 void root_impl_cleanup(void);

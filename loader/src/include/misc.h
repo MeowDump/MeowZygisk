@@ -10,8 +10,10 @@
   #define LP_SELECT(lp32, lp64) lp32
 #endif
 
+#define APP_ID(uid) uid % 100000
+
 #define IS_ISOLATED_SERVICE(uid)      \
-  ((uid) >= 90000 && (uid) < 1000000)
+  ((APP_ID(uid)) >= 90000)
 
 struct kernel_version {
   uint8_t major;

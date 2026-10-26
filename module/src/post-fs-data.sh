@@ -15,7 +15,15 @@ if [ "$(which magisk)" ]; then
       if [ -f "$file/post-fs-data.sh" ]; then
         cd "$file"
         log -p i -t "zygisk-sh" "Manually trigger post-fs-data.sh for $file"
+
+        # INFO: Don't propagate errexit
+        set +e
+
         sh "$(realpath ./post-fs-data.sh)"
+
+        # INFO: Re-enable errexit
+        set -e
+
         cd "$MODDIR"
       fi
     fi
@@ -33,7 +41,9 @@ rm -rf "$TMP_PATH"
 
 create_sys_perm $TMP_PATH
 
-sh /data/adb/post-fs-data.d/rezygisk.sh
+# INFO: We need to cleanup the module.prop to its default state before ReZygisk writes to it
+#         so that it never duplicates the module status in there.
+cp "$MODDIR/module.prop.bak" "$MODDIR/module.prop"
 
 # INFO: Utilize the one with the biggest output, as some devices with Tango have the full list
 #         in ro.product.cpu.abilist but others only have a subset there, and the full list in

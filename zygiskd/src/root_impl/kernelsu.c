@@ -13,9 +13,9 @@
 
 #include "kernelsu.h"
 
-const char *ksu_manager_paths[] = {
-  "/data/user_de/0/me.weishu.kernelsu",
-  "/data/user_de/0/com.rifsxd.ksunext",
+const char *ksu_manager_pkgs[] = {
+  "me.weishu.kernelsu",
+  "com.rifsxd.ksunext",
 };
 
 /* INFO: It would be presumed it is a unsigned int,
@@ -225,20 +225,17 @@ bool ksu_uid_is_manager(uid_t uid) {
       uid_t manager_uid = 0;
       prctl(KSU_INSTALL_MAGIC1, CMD_GET_MANAGER_UID, &manager_uid, NULL, &reply_ok);
 
-      return uid == manager_uid;
+      return APP_ID(uid) == APP_ID(manager_uid);
     }
 
-    const char *manager_path = ksu_manager_paths[variant];
-    struct stat st;
-    if (stat(manager_path, &st) == -1) {
-      if (errno != ENOENT) {
-        LOGE("Failed to stat KSU manager data directory: %s", strerror(errno));
-      }
+    uid_t manager_uid = uid_from_pkg(ksu_manager_pkgs[variant]);
+    if (!manager_uid) {
+      LOGE("Failed to retrieve uid for %s", ksu_manager_pkgs[variant]);
 
       return false;
     }
 
-    return st.st_uid == uid;
+    return APP_ID(uid) == manager_uid;
   }
 
   /* INFO: If it uses ioctl, it already has support to get manager UID operation */
@@ -249,9 +246,8 @@ bool ksu_uid_is_manager(uid_t uid) {
     return false;
   }
 
-  /* INFO: For Private Space, UID will be 10xxxxx, being xxxxx the original UID. To check if
-             the UID is the manager UID in Private Space, we "normalize" it with the modulo operator. */
-  return uid % 100000 == cmd.uid;
+  /* INFO: KernelSU's IOCTL command already returns the app_id. */
+  return APP_ID(uid) == cmd.uid;
 }
 
 void ksu_cleanup(void) {
