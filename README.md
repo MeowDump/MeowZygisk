@@ -1,15 +1,3 @@
-# About this repo
-
-_This is my personal fork of the original repository, modified to fit my own needs and workflow._
-
-_Feel free to use it if you find it useful. If you run into any issues or have suggestions, you're welcome to report them._
-
-_I’ll try to fix reported problems whenever I have some free time, but please keep in mind that this is a personal project and there are no guarantees of active maintenance._
-
-**Thanks!**
-
---------
-
 ## Installation
 
 ### 1. Select the right zip
@@ -34,15 +22,15 @@ After rebooting, you can verify if ReZygisk is working properly by checking the 
 
 ## Bug Report
 
-- If you see ⚠️ in the module description, click the Action button and share the generated log file with [MEOWna](https://t.me/TempMeow).
+- If you see ⚠️ in the module description, click the Action button and share the generated log file with [MEOWna](https://t.me/HelloMona).
 
-- If the issue occurs in the release build (the filename doesn't contain `debug`), open the WebUI, enable **DEBUG LOGGING**, and reboot your device. After rebooting, click the Action button and share the generated log file with [MEOWna](https://t.me/TempMeow).
+- If the issue occurs in the release build (the filename doesn't contain `debug`), open the WebUI, enable **DEBUG LOGGING**, and reboot your device. After rebooting, click the Action button and share the generated log file with [MEOWna](https://t.me/HelloMona).
 
 ## Support
 
 For any question related to this ReZygisk fork, feel free to contact me on telegram
 
-- Telegram: [MEOWna](https://t.me/TempMeow)
+- Telegram ID: [MEOWna](https://t.me/HelloMona)
 - Telegram Group Chat: [@MeowVerse](https://t.me/MeowDump)
 
 
