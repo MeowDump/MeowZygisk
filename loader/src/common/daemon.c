@@ -151,7 +151,11 @@ void rezygiskd_get_info(struct rezygisk_info *info) {
     }
 
     char module_path[PATH_MAX];
-    snprintf(module_path, sizeof(module_path), "/data/adb/modules/%s/module.prop", module_name);
+    if (strcmp(module_name, "meow-wheel") == 0) {
+      snprintf(module_path, sizeof(module_path), "/data/adb/modules/rezygisk/meow-wheel/module.prop");
+    } else {
+      snprintf(module_path, sizeof(module_path), "/data/adb/modules/%s/module.prop", module_name);
+    }
 
     free(module_name);
 
