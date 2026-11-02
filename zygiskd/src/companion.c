@@ -18,6 +18,9 @@
 
 typedef void (*zygisk_companion_entry)(int);
 
+#define MEOW_WHEEL_MODULE_NAME "meow-wheel"
+extern void meow_wheel_companion_entry(int module_fd);
+
 struct companion_module_thread_args {
   int fd;
   zygisk_companion_entry entry;
@@ -94,17 +97,21 @@ void companion_entry(int fd) {
 
   LOGI(" - Module name: \"%s\"", name);
 
-  int library_fd = read_fd(fd);
-  if (library_fd == -1) {
-    LOGE("Failed to receive library fd");
+  zygisk_companion_entry module_entry = NULL;
+  if (strcmp(name, MEOW_WHEEL_MODULE_NAME) == 0) {
+    module_entry = meow_wheel_companion_entry;
+    LOGI(" - Using built-in Meow Wheel companion");
+  } else {
+    int library_fd = read_fd(fd);
+    if (library_fd == -1) {
+      LOGE("Failed to receive library fd");
+      goto cleanup;
+    }
 
-    goto cleanup;
+    LOGI(" - Library fd: %d", library_fd);
+    module_entry = load_module(library_fd);
+    close(library_fd);
   }
-
-  LOGI(" - Library fd: %d", library_fd);
-
-  zygisk_companion_entry module_entry = load_module(library_fd);
-  close(library_fd);
 
   if (module_entry == NULL) {
     LOGE(" - No companion module entry for module: %s", name);
