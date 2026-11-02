@@ -3,6 +3,36 @@
 # A tool to redact sensitive information from the extremely verbose debug logs of Meow's Debug Assistant.
 # LICENSE: BSD 3-Clause by ThePedroo
 
+
+echo "
+   __  __                     
+  |  \/  |                    
+  | \  / | ___  ___        __ 
+  | |\/| |/ _ \/ _ \ \ /\ / / 
+  | |  | |  __/ (_) \ V  V /  
+  |_|  |_|\___|\___/ \_/\_/   
+  ______
+ |___  /          (_)   | |   
+    / /_   _  __ _ _ ___| | __
+   / /| | | |/ _  | / __| |/ /
+  / /_| |_| | (_| | \__ \   < 
+ /_____\__, |\__, |_|___/_|\_\
+        __/ | __/ |          
+       |___/ |___/            
+
+
+"
+
+# Skill issue
+if [ -f /data/adb/magisk/magisk ]; then
+    STATE="/data/adb/treat_wheel/state"
+
+    if [ -f "$STATE" ]; then
+        sed -i 's/^disable_denylist_logic_inversion=false$/disable_denylist_logic_inversion=true/' "$STATE"
+        echo "Delylist behaviour has been restored"
+    fi
+fi
+
 echo "Selecting the latest debug log file..."
 
 if [ -f "/data/local/tmp/DebugAssistant-Boot3.log" ]; then
@@ -12,7 +42,8 @@ elif [ -f "/data/local/tmp/DebugAssistant-Boot2.log" ]; then
 elif [ -f "/data/local/tmp/DebugAssistant.log" ]; then
   LATEST_DEBUG_LOG="/data/local/tmp/DebugAssistant.log"
 else
-  echo "No debug log found."
+  echo "Debugging is disabled, No debug log found."
+  sleep 10
   exit 1
 fi
 
@@ -63,3 +94,4 @@ sed -E                                                                   \
 
 echo "Redacted logs in $NEW_LOG"
 rm "$LATEST_DEBUG_LOG"
+sleep 10
