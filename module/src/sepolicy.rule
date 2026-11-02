@@ -24,3 +24,6 @@ allow zygote appdomain_tmpfs file *
 
 # INFO: Needed for Tango Zygote
 allow zygote system_lib_file file execmod
+
+# INFO: MeowWheel needs this
+allow * zygote unix_stream_socket { write read }
