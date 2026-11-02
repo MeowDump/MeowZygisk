@@ -29,6 +29,10 @@
 void *start_addr = NULL;
 size_t block_size = 0;
 
+extern void meow_wheel_zygote_init(void);
+extern void meow_wheel_before_provider_unmap(void);
+static bool wheel_active = false;
+
 /* INFO: Flag indices */
 enum {
   POST_SPECIALIZE,
@@ -309,6 +313,7 @@ DCL_HOOK_FUNC(int, pthread_attr_setstacksize, void *target, size_t size) {
   if (gettid() != getpid()) return res;
 
   if (should_unmap_zygisk) {
+    if (wheel_active) meow_wheel_before_provider_unmap();
     unhook_functions();
 
     csoloader_deinit();
@@ -758,7 +763,7 @@ static void api_set_option(void *id, enum rezygisk_options opt) {
     }
     case DLCLOSE_MODULE_LIBRARY: {
       struct rezygisk_module *m_lib = &zygisk_modules[DECODE_ID(id)];
-      m_lib->unload = true;
+      if (!m_lib->builtin) m_lib->unload = true;
 
       break;
     }
@@ -814,6 +819,93 @@ bool rezygisk_module_register(struct rezygisk_api *api, struct rezygisk_abi cons
   }
 
   return true;
+}
+
+struct meow_wheel_module_abi {
+  long api_version;
+  void *impl;
+  void (*preAppSpecialize)(void *, void *);
+  void (*postAppSpecialize)(void *, const void *);
+  void (*preServerSpecialize)(void *, void *);
+  void (*postServerSpecialize)(void *, const void *);
+};
+
+enum meow_wheel_process_flags {
+  MEOW_WHEEL_PROCESS_GRANTED_ROOT = (1u << 0),
+  MEOW_WHEEL_PROCESS_ON_DENYLIST = (1u << 1),
+  MEOW_WHEEL_PROCESS_IS_MANAGER = (1u << 27),
+  MEOW_WHEEL_PROCESS_ROOT_IS_APATCH = (1u << 28),
+  MEOW_WHEEL_PROCESS_ROOT_IS_KSU = (1u << 29),
+  MEOW_WHEEL_PROCESS_ROOT_IS_MAGISK = (1u << 30),
+  MEOW_WHEEL_PROCESS_IS_SYS_UI = (int)(1u << 31)
+};
+
+enum meow_wheel_options {
+  MEOW_WHEEL_FORCE_DENYLIST_UNMOUNT = 0,
+  MEOW_WHEEL_DLCLOSE_MODULE_LIBRARY = 1
+};
+
+struct meow_wheel_api {
+  void *impl;
+  bool (*registerModule)(struct meow_wheel_api *, struct meow_wheel_module_abi *);
+  void (*hookJniNativeMethods)(JNIEnv *, const char *, JNINativeMethod *, int);
+  void (*pltHookRegister)(dev_t, ino_t, const char *, void *, void **);
+  bool (*exemptFd)(int);
+  bool (*pltHookCommit)(void);
+  int (*connectCompanion)(void *);
+  void (*setOption)(void *, enum meow_wheel_options);
+  int (*getModuleDir)(void *);
+  enum meow_wheel_process_flags (*getFlags)(void *);
+};
+
+extern void meow_wheel_module_entry(struct meow_wheel_api *, JNIEnv *);
+
+static struct rezygisk_api *wheel_host_api;
+static struct meow_wheel_api wheel_api;
+
+static bool wheel_register_module(struct meow_wheel_api *api,
+                                  struct meow_wheel_module_abi *target_module) {
+  (void)api;
+  if (!wheel_host_api || !target_module) return false;
+
+  bool registered = rezygisk_module_register(
+      wheel_host_api, (const struct rezygisk_abi *)target_module);
+  if (!registered) return false;
+
+  wheel_api.hookJniNativeMethods = wheel_host_api->hook_jni_native_methods;
+  wheel_api.pltHookRegister = wheel_host_api->plt_hook_register_v4;
+  wheel_api.pltHookCommit = wheel_host_api->plt_hook_commit;
+  wheel_api.connectCompanion = wheel_host_api->connect_companion;
+  wheel_api.getModuleDir = wheel_host_api->get_module_dir;
+  return true;
+}
+
+static bool wheel_exempt_fd(int fd) {
+  if (!wheel_host_api || !wheel_host_api->exempt_fd) return false;
+  wheel_host_api->exempt_fd(fd);
+  return true;
+}
+
+static void wheel_set_option(void *impl, enum meow_wheel_options option) {
+  if (wheel_host_api && wheel_host_api->set_option)
+    wheel_host_api->set_option(impl, (enum rezygisk_options)option);
+}
+
+static enum meow_wheel_process_flags wheel_get_flags(void *impl) {
+  (void)impl;
+  if (!wheel_host_api || !wheel_host_api->get_flags) return 0;
+  return (enum meow_wheel_process_flags)wheel_host_api->get_flags();
+}
+
+static void wheel_module_entry(struct rezygisk_module *module, JNIEnv *env) {
+  wheel_host_api = &module->api;
+  memset(&wheel_api, 0, sizeof(wheel_api));
+  wheel_api.impl = module->api.impl;
+  wheel_api.registerModule = wheel_register_module;
+  wheel_api.exemptFd = wheel_exempt_fd;
+  wheel_api.setOption = wheel_set_option;
+  wheel_api.getFlags = wheel_get_flags;
+  meow_wheel_module_entry(&wheel_api, env);
 }
 
 /* INFO: Signal mask helper */
@@ -965,10 +1057,24 @@ static bool load_modules_only(void) {
     return false;
   }
 
+  size_t daemon_module_index = 0;
   for (size_t i = 0; i < ms.modules_count; i++) {
     const char *lib_path = ms.modules[i];
+    struct rezygisk_module *module = &zygisk_modules[zygisk_module_length];
 
-    if (!csoloader_load(&zygisk_modules[zygisk_module_length].lib, lib_path)) {
+    if (strcmp(lib_path, "@builtin/meow-wheel") == 0) {
+      module->builtin = true;
+      module->name = "Meow Wheel";
+      module->api.register_module = rezygisk_module_register;
+      module->api.impl = ENCODE_ID((void *)zygisk_module_length);
+      module->unload = false;
+      zygisk_module_length++;
+      daemon_module_index++;
+      LOGD("Registered built-in module [Meow Wheel]");
+      continue;
+    }
+
+    if (!csoloader_load(&module->lib, lib_path)) {
       LOGE("Failed to load module [%s]", lib_path);
 
       /* INFO: In case a module failed to load, update the list of available modules
@@ -976,30 +1082,31 @@ static bool load_modules_only(void) {
            Zygote library and the available modules in ReZygiskd. */
       /* TODO: Update the list of modules for ReZygisk monitor, so that it can update
                  for WebUI. That is simply cosmetic, though. */
-      rezygiskd_remove_module(i);
+      rezygiskd_remove_module(daemon_module_index);
 
       continue;
     }
 
-    void *entry = csoloader_get_symbol(&zygisk_modules[zygisk_module_length].lib, "zygisk_module_entry");
+    void *entry = csoloader_get_symbol(&module->lib, "zygisk_module_entry");
     if (!entry) {
       LOGE("Failed to find entry point in module [%s]", lib_path);
 
-      csoloader_unload(&zygisk_modules[zygisk_module_length].lib);
+      csoloader_unload(&module->lib);
 
-      rezygiskd_remove_module(i);
+      rezygiskd_remove_module(daemon_module_index);
 
       continue;
     }
 
-    zygisk_modules[zygisk_module_length].api.register_module = rezygisk_module_register;
-    zygisk_modules[zygisk_module_length].api.impl = ENCODE_ID((void *)zygisk_module_length);
-    zygisk_modules[zygisk_module_length].zygisk_module_entry = (void (*)(void *, void *))entry;
+    module->api.register_module = rezygisk_module_register;
+    module->api.impl = ENCODE_ID((void *)zygisk_module_length);
+    module->zygisk_module_entry = (void (*)(void *, void *))entry;
 
     LOGD("Loaded module [%s]. Entry: %p", lib_path, entry);
 
-    zygisk_modules[zygisk_module_length].unload = false;
+    module->unload = false;
     zygisk_module_length++;
+    daemon_module_index++;
   }
 
   free_modules(&ms);
@@ -1009,7 +1116,13 @@ static bool load_modules_only(void) {
 
 static void rz_run_modules_pre(struct zygisk_context *ctx) {
   for (size_t i = 0; i < zygisk_module_length; i++) {
-    rz_module_call_on_load(&zygisk_modules[i], ctx->env);
+    if (zygisk_modules[i].builtin) {
+      if (access("/data/adb/treat_wheel/disabled", F_OK) == 0) continue;
+      wheel_active = true;
+      wheel_module_entry(&zygisk_modules[i], ctx->env);
+    } else {
+      rz_module_call_on_load(&zygisk_modules[i], ctx->env);
+    }
 
     if (FLAG_GET(ctx, APP_SPECIALIZE)) rz_module_call_pre_app_specialize(&zygisk_modules[i], ctx->args.app);
     else if (FLAG_GET(ctx, SERVER_FORK_AND_SPECIALIZE)) rz_module_call_pre_server_specialize(&zygisk_modules[i], ctx->args.server);
@@ -1020,11 +1133,16 @@ static void rz_run_modules_post(struct zygisk_context *ctx) {
   FLAG_SET(ctx, POST_SPECIALIZE);
 
   size_t modules_unloaded = 0;
+  size_t external_modules = 0;
   for (size_t i = 0; i < zygisk_module_length; i++) {
     struct rezygisk_module *m = &zygisk_modules[i];
+    if (m->builtin && !wheel_active) continue;
 
     if (FLAG_GET(ctx, APP_SPECIALIZE)) rz_module_call_post_app_specialize(m, ctx->args.app);
     else if (FLAG_GET(ctx, SERVER_FORK_AND_SPECIALIZE)) rz_module_call_post_server_specialize(m, ctx->args.server);
+
+    if (m->builtin) continue;
+    external_modules++;
 
     if (!m->unload) {
       LOGD("Abandoning module library at %p", &m->lib);
@@ -1043,8 +1161,8 @@ static void rz_run_modules_post(struct zygisk_context *ctx) {
     modules_unloaded++;
   }
 
-  if (zygisk_module_length > 0)
-    LOGD("Modules unloaded: %zu/%zu", modules_unloaded, zygisk_module_length);
+  if (external_modules > 0)
+    LOGD("External modules unloaded: %zu/%zu", modules_unloaded, external_modules);
 }
 
 static void rz_app_specialize_pre(struct zygisk_context *ctx) {
@@ -1380,6 +1498,8 @@ static void hook_unloader(void) {
   /* INFO: Load modules early on (before system server fork) to spread through all Zygotes */
   if (!load_modules_only()) {
     LOGE("Failed to load modules in hook_unloader");
+  } else if (access("/data/adb/treat_wheel/disabled", F_OK) != 0) {
+    meow_wheel_zygote_init();
   }
 
   LOGD("ReZygisk unloader hooked successfully");
