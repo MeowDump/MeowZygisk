@@ -75,6 +75,20 @@ else
   ui_print "- Device platform: $ARCH"
 fi
 
+for incompatible_module in zygisk_assistant nohello; do
+  for module_dir in \
+    "/data/adb/modules/$incompatible_module" \
+    "/data/adb/modules_update/$incompatible_module"; do
+
+    if [ -d "$module_dir" ]; then
+      touch "$module_dir/remove"
+      ui_print "! $incompatible_module is incompatible with integrated Meow Wheel."
+      ui_print "! Removal has been scheduled. Reboot to apply changes."
+      break
+    fi
+  done
+done
+
 ui_print "- Extracting verify.sh"
 unzip -o "$ZIPFILE" 'verify.sh' -d "$TMPDIR" >&2
 if [ ! -f "$TMPDIR/verify.sh" ]; then
@@ -104,6 +118,7 @@ extract "$ZIPFILE" 'post-fs-data.sh' "$MODPATH"
 extract "$ZIPFILE" 'service.sh'      "$MODPATH"
 extract "$ZIPFILE" 'uninstall.sh'    "$MODPATH"
 extract "$ZIPFILE" 'action.sh'       "$MODPATH"
+extract "$ZIPFILE" 'shortcut.png'    "$MODPATH"
 extract "$ZIPFILE" 'rezygisk.sh' "/data/adb/post-fs-data.d/"
 extract "$ZIPFILE" 'mda.sh' "/data/adb/post-fs-data.d/"
 chmod 0755 "/data/adb/post-fs-data.d/mda.sh"
@@ -147,6 +162,10 @@ else
   CPU_ABIS=$CPU_ABIS_PROP1
 fi
 
+if [ -z "$CPU_ABIS" ]; then
+  abort "! Unable to determine supported CPU architectures"
+fi
+
 SUPPORTS_32BIT=false
 SUPPORTS_64BIT=false
 
@@ -158,6 +177,10 @@ fi
 if [[ "$CPU_ABIS" == *"x86_64"* || "$CPU_ABIS" == *"arm64-v8a"* ]]; then
   SUPPORTS_64BIT=true
   ui_print "- Device supports 64-bit"
+fi
+
+if [ "$SUPPORTS_32BIT" = false ] && [ "$SUPPORTS_64BIT" = false ]; then
+  abort "! Unable to determine supported CPU architectures"
 fi
 
 if [ "$SUPPORTS_32BIT" = true ]; then
@@ -225,9 +248,75 @@ if [ "$SUPPORTS_64BIT" = true ]; then
   set_perm_recursive "$MODPATH/lib64" 0 0 0755 0644 u:object_r:system_lib_file:s0
 fi
 
+ui_print "- Installing integrated Meow Wheel"
+mkdir -p "$MODPATH/meow-wheel"
+unzip -o "$ZIPFILE" "meow-wheel/*" -d "$MODPATH" >&2
+if ! rm -rf "$MODPATH/meow-wheel/zygisk"; then
+  abort "! Unable to remove obsolete nested Meow Wheel libraries"
+fi
+if [ ! -f "$MODPATH/meow-wheel/module.prop" ] || [ ! -f "$MODPATH/meow-wheel/LICENSE" ] || [ ! -d "$MODPATH/meow-wheel/cmd" ]; then
+  abort "! Meow Wheel payload is missing or incomplete"
+fi
+set_perm_recursive "$MODPATH/meow-wheel" 0 0 0755 0755
+chmod 0644 "$MODPATH/meow-wheel/module.prop" "$MODPATH/meow-wheel/LICENSE"
+for wheel_binary in "$MODPATH"/meow-wheel/cmd/*/treat-wheel; do
+  [ -f "$wheel_binary" ] && chmod 0755 "$wheel_binary"
+done
+
+case "$ARCH" in
+  arm64) WHEEL_CMD_ARCH=arm64-v8a ;;
+  arm) WHEEL_CMD_ARCH=armeabi-v7a ;;
+  x64) WHEEL_CMD_ARCH=x86_64 ;;
+  x86) WHEEL_CMD_ARCH=x86 ;;
+esac
+if [ ! -x "$MODPATH/meow-wheel/cmd/$WHEEL_CMD_ARCH/treat-wheel" ]; then
+  abort "! Missing Meow Wheel command binary for $ARCH"
+fi
+
+# Preserve a user's previous standalone Meow Wheel state.
+WHEEL_STANDALONE_FOUND=false
+WHEEL_WAS_DISABLED=false
+for old_wheel in /data/adb/modules/treat_wheel /data/adb/modules_update/treat_wheel; do
+  if [ -d "$old_wheel" ]; then
+    WHEEL_STANDALONE_FOUND=true
+    if [ -f "$old_wheel/disable" ]; then
+      WHEEL_WAS_DISABLED=true
+    fi
+  fi
+done
+# The integrated copy is now installed; remove standalone module directories to
+# prevent ReZygisk from loading Meow Wheel twice
+if ! rm -rf /data/adb/modules/treat_wheel /data/adb/modules_update/treat_wheel; then
+  abort "! Unable to remove the previous standalone Meow Wheel installation"
+fi
+
+if ! mkdir -p /data/adb/treat_wheel; then
+  abort "! Unable to prepare Meow Wheel's persistent configuration directory"
+fi
+if [ "$WHEEL_STANDALONE_FOUND" = true ]; then
+  if [ "$WHEEL_WAS_DISABLED" = true ]; then
+    touch /data/adb/treat_wheel/disabled || abort "! Unable to migrate Meow Wheel's disabled state"
+  else
+    rm -f /data/adb/treat_wheel/disabled || abort "! Unable to migrate Meow Wheel's enabled state"
+  fi
+fi
+if [ ! -f /data/adb/treat_wheel/state ]; then
+  : > /data/adb/treat_wheel/state || abort "! Unable to initialize Meow Wheel's configuration"
+fi
+if ! grep -q '^disable_revanced_mounts_umount=' /data/adb/treat_wheel/state; then
+  echo 'disable_revanced_mounts_umount=true' >> /data/adb/treat_wheel/state || abort "! Unable to initialize Meow Wheel defaults"
+fi
+if ! grep -q '^disable_denylist_logic_inversion=' /data/adb/treat_wheel/state; then
+  echo 'disable_denylist_logic_inversion=true' >> /data/adb/treat_wheel/state || abort "! Unable to initialize Meow Wheel defaults"
+fi
+
 # If Huawei's Maple is enabled, system_server is created with a special way which is out of Zygisk's control
 HUAWEI_MAPLE_ENABLED=$(grep_prop ro.maple.enable)
 if [ "$HUAWEI_MAPLE_ENABLED" == "1" ]; then
   ui_print "- Add ro.maple.enable=0"
   echo "ro.maple.enable=0" >>"$MODPATH/system.prop"
 fi
+
+# Remove packaged SHA-256 sidecar files from MODPATH
+ui_print "- Cleaning SHA-256 sidecar files"
+find "$MODPATH" -type f -name '*.sha256' -exec rm -f {} \;
