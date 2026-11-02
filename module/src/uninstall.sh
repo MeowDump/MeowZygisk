@@ -4,6 +4,7 @@ set -e
 
 export TMP_PATH=/data/adb/rezygisk
 rm -rf "$TMP_PATH"
+rm -rf /data/adb/treat_wheel
 
 rm -f /data/adb/post-fs-data.d/rezygisk.sh
 rm -f /data/adb/post-mount.d/rezygisk.sh
