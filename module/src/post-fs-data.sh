@@ -13,6 +13,8 @@ fi
 
 cd "$MODDIR"
 
+rm -f /data/adb/treat_wheel/status
+
 if [ "$(which magisk)" ]; then
   for file in ../*; do
     if [ -d "$file" ] && [ -d "$file/zygisk" ] && ! [ -f "$file/disable" ]; then
