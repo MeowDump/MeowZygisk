@@ -4,3 +4,7 @@
 [submodule "CSOLoader"]
 	path = loader/src/external/csoloader
 	url = https://github.com/ThePedroo/CSOLoader
+[submodule "third_party/meow-wheel"]
+	path = third_party/meow-wheel
+	url = https://github.com/MeowDump/Meow-Wheel.git
+	branch = wip
