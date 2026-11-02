@@ -34,6 +34,7 @@ struct Context {
 #define ZYGISKD_FILE PATH_MODULES_DIR "/rezygisk/bin/zygiskd" LP_SELECT("32", "64")
 #define ZYGISKD_PATH "/data/adb/modules/rezygisk/bin/zygiskd" LP_SELECT("32", "64")
 #define MAX_MODULE_NAME 128
+#define MEOW_WHEEL_MODULE_NAME "meow-wheel"
 
 #ifdef __aarch64__
   #define ARCH_STR "arm64-v8a"
@@ -85,10 +86,11 @@ static void load_modules(struct Context *restrict context) {
   context->len = 0;
   context->modules = NULL;
 
+  size_t module_limit = REZYGISK_MAX_MODULES - 1;
+
   DIR *dir = opendir(PATH_MODULES_DIR);
   if (dir == NULL) {
     LOGE("Failed opening modules directory: %s.", PATH_MODULES_DIR);
-
     return;
   }
 
@@ -96,13 +98,15 @@ static void load_modules(struct Context *restrict context) {
 
   struct dirent *entry;
   while ((entry = readdir(dir)) != NULL) {
-    if (context->len >= REZYGISK_MAX_MODULES) {
-      LOGW("Module limit reached: %u", REZYGISK_MAX_MODULES);
+    if (context->len >= module_limit) {
+      LOGW("Module limit reached: %zu", module_limit);
       break;
     }
 
     if (entry->d_name[0] == '.' ||
         strcmp(entry->d_name, "rezygisk") == 0 ||
+        strcmp(entry->d_name, MEOW_WHEEL_MODULE_NAME) == 0 ||
+        strcmp(entry->d_name, "treat_wheel") == 0 ||
         !valid_module_name(entry->d_name)) {
       continue;
     }
@@ -148,6 +152,24 @@ static void load_modules(struct Context *restrict context) {
   }
 
   closedir(dir);
+
+  {
+    struct Module *tmp_modules = realloc(context->modules, (context->len + 1) * sizeof(struct Module));
+    if (tmp_modules == NULL) {
+      LOGE("Failed reallocating memory for integrated Meow Wheel.");
+    } else {
+      context->modules = tmp_modules;
+      context->modules[context->len].name = strdup(MEOW_WHEEL_MODULE_NAME);
+      if (context->modules[context->len].name == NULL) {
+        LOGE("Failed to allocate integrated Meow Wheel module name: %s", strerror(errno));
+      } else {
+        context->modules[context->len].lib_fd = -1;
+        context->modules[context->len].companion = -1;
+        context->len++;
+        LOGI("Registered built-in Meow Wheel module.");
+      }
+    }
+  }
 }
 static void free_modules(struct Context *restrict context) {
   for (size_t i = 0; i < context->len; i++) {
@@ -208,7 +230,7 @@ static int spawn_companion(char *restrict argv[], char *restrict name, int lib_f
       return -1;
     }
 
-    if (write_fd(daemon_fd, lib_fd) == -1) {
+    if (lib_fd >= 0 && write_fd(daemon_fd, lib_fd) == -1) {
       LOGE("Failed sending library fd.");
 
       close(daemon_fd);
@@ -498,7 +520,11 @@ void zygiskd_start(char *restrict argv[]) {
 
         for (size_t i = 0; i < clen; i++) {
           char lib_path[PATH_MAX];
-          snprintf(lib_path, PATH_MAX, "/data/adb/modules/%s/zygisk/" ARCH_STR ".so", context.modules[i].name);
+          if (strcmp(context.modules[i].name, MEOW_WHEEL_MODULE_NAME) == 0) {
+            snprintf(lib_path, sizeof(lib_path), "@builtin/meow-wheel");
+          } else {
+            snprintf(lib_path, sizeof(lib_path), "/data/adb/modules/%s/zygisk/" ARCH_STR ".so", context.modules[i].name);
+          }
 
           if (write_string(client_fd, lib_path) == -1) {
             LOGE("Failed writing module path.");
@@ -587,7 +613,11 @@ void zygiskd_start(char *restrict argv[]) {
         }
 
         char module_dir[PATH_MAX];
-        snprintf(module_dir, PATH_MAX, "%s/%s", PATH_MODULES_DIR, context.modules[index].name);
+        if (strcmp(context.modules[index].name, MEOW_WHEEL_MODULE_NAME) == 0) {
+          snprintf(module_dir, sizeof(module_dir), "%s/rezygisk/meow-wheel", PATH_MODULES_DIR);
+        } else {
+          snprintf(module_dir, sizeof(module_dir), "%s/%s", PATH_MODULES_DIR, context.modules[index].name);
+        }
 
         int fd = open(module_dir, O_RDONLY);
         if (fd == -1) {
