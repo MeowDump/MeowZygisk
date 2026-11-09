@@ -1,6 +1,6 @@
 {
-  "versionCode": 3000,
-  "version": "v3",
-  "zipUrl": "https://github.com/MeowDump/MeowZygisk/releases/download/v3/v3-MeowZygisk-22-09-2026.zip",
+  "versionCode": 4000,
+  "version": "v4",
+  "zipUrl": "https://github.com/MeowDump/MeowZygisk/releases/download/v4/v4-MeowZygisk-09-11-2026.zip",
   "changelog": "https://raw.githubusercontent.com/MeowDump/MeowZygisk/refs/heads/main/changelog.md"
 }
