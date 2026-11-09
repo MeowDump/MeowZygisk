@@ -99,6 +99,16 @@
           <span class="action-copy"><strong data-i18n="debugLogging">Debug logging</strong><small data-i18n="debugLoggingDesc">Enable or disable ReZygisk debug logging.</small></span>
           <span class="toggle" id="debug-toggle"><span></span></span>
         </button>
+        <button class="action-row" id="wheel-toggle-btn">
+          <span class="action-icon"><span class="material-symbols-rounded">donut_large</span></span>
+          <span class="action-copy"><strong data-i18n="meowWheel">Meow Wheel</strong><small data-i18n="meowWheelDesc">Enable or disable Meow Wheel independently. Reboot to apply fully.</small></span>
+          <span class="toggle" id="wheel-toggle"><span></span></span>
+        </button>
+        <button class="action-row" id="wheel-settings-btn" aria-expanded="false">
+          <span class="action-icon"><span class="material-symbols-rounded">tune</span></span>
+          <span class="action-copy"><strong data-i18n="wheelSettings">Meow Wheel settings</strong><small data-i18n="wheelSettingsDesc">Configure Meow Wheel features inside this dashboard.</small></span>
+          <span class="material-symbols-rounded action-arrow">chevron_right</span>
+        </button>
         <button class="action-row" id="run-action-btn">
           <span class="action-icon"><span class="material-symbols-rounded">terminal</span></span>
           <span class="action-copy"><strong data-i18n="generateLogs">Generate logs</strong><small data-i18n="generateLogsDesc">Run the ReZygisk action script and show its output.</small></span>
@@ -115,6 +125,83 @@
           <span class="material-symbols-rounded action-arrow">open_in_new</span>
         </button>
       </section>
+
+      <div id="wheel-settings-container" hidden>
+        <div class="section-header wheel-settings-heading">
+          <span class="material-symbols-rounded">tune</span>
+          <span data-i18n="wheelSettingsTitle">Meow Wheel settings</span>
+          <button class="wheel-settings-close" id="wheel-settings-close" type="button">
+            <span class="material-symbols-rounded">close</span>
+            <span data-i18n="close">Close</span>
+          </button>
+        </div>
+        <section class="panel-card action-card wheel-settings-card">
+          <div class="wheel-settings-note" data-i18n="wheelSettingsNote">Some options may require a reboot. Check each option's description.</div>
+          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="ignoring" aria-pressed="false">
+            <span class="action-icon"><span class="material-symbols-rounded">block</span></span>
+            <span class="action-copy"><strong data-i18n="wheelIgnoreTitle">Ignore everyone and everything</strong><small data-i18n="wheelIgnoreDesc">Temporarily disable all Meow Wheel hiding features.</small></span>
+            <span class="toggle"><span></span></span>
+          </button>
+          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_prop_spoofing" aria-pressed="false">
+            <span class="action-icon"><span class="material-symbols-rounded">tune</span></span>
+            <span class="action-copy"><strong data-i18n="wheelPropSpoofTitle">Disable prop spoofing</strong><small data-i18n="wheelPropSpoofDesc">Stop spoofing sensitive and custom ROM properties. A reboot is required.</small></span>
+            <span class="toggle"><span></span></span>
+          </button>
+          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_gsi_hiding" aria-pressed="false">
+            <span class="action-icon"><span class="material-symbols-rounded">visibility_off</span></span>
+            <span class="action-copy"><strong data-i18n="wheelGsiTitle">Disable GSI traces hiding</strong><small data-i18n="wheelGsiDesc">Stop hiding GSI traces.</small></span>
+            <span class="toggle"><span></span></span>
+          </button>
+          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_zygote_mountinfo_leak_fixing" aria-pressed="false">
+            <span class="action-icon"><span class="material-symbols-rounded">security</span></span>
+            <span class="action-copy"><strong data-i18n="wheelZygoteTitle">Disable Zygote mountinfo leak fixing</strong><small data-i18n="wheelZygoteDesc">Stop fixing the mountinfo leak created by Zygote. Requires Android 11 or higher.</small></span>
+            <span class="toggle"><span></span></span>
+          </button>
+          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_maps_hiding" aria-pressed="false">
+            <span class="action-icon"><span class="material-symbols-rounded">map</span></span>
+            <span class="action-copy"><strong data-i18n="wheelMapsTitle">Disable maps hiding</strong><small data-i18n="wheelMapsDesc">Stop hiding suspicious memory mappings.</small></span>
+            <span class="toggle"><span></span></span>
+          </button>
+          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_revanced_mounts_umount" aria-pressed="false">
+            <span class="action-icon"><span class="material-symbols-rounded">layers_clear</span></span>
+            <span class="action-copy"><strong data-i18n="wheelRevancedTitle">Disable ReVanced modules mounts hiding</strong><small data-i18n="wheelRevancedDesc">Stop unmounting mounts created globally by supported ReVanced modules.</small></span>
+            <span class="toggle"><span></span></span>
+          </button>
+          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_custom_font_loading" aria-pressed="false">
+            <span class="action-icon"><span class="material-symbols-rounded">font_download_off</span></span>
+            <span class="action-copy"><strong data-i18n="wheelFontTitle">Disable custom font loading</strong><small data-i18n="wheelFontDesc">Stop loading custom fonts from the system.</small></span>
+            <span class="toggle"><span></span></span>
+          </button>
+          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_denylist_logic_inversion" aria-pressed="false">
+            <span class="action-icon"><span class="material-symbols-rounded">rule</span></span>
+            <span class="action-copy"><strong data-i18n="wheelDenylistTitle">Disable denylist logic inversion</strong><small data-i18n="wheelDenylistDesc">Stop inverting Magisk DenyList behavior.</small></span>
+            <span class="toggle"><span></span></span>
+          </button>
+          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_module_loading_traces_hiding" aria-pressed="false">
+            <span class="action-icon"><span class="material-symbols-rounded">extension_off</span></span>
+            <span class="action-copy"><strong data-i18n="wheelModuleTracesTitle">Disable module loading traces hiding</strong><small data-i18n="wheelModuleTracesDesc">Stop hiding traces generated by some modules during loading.</small></span>
+            <span class="toggle"><span></span></span>
+          </button>
+          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_frida_traces_hiding" aria-pressed="false">
+            <span class="action-icon"><span class="material-symbols-rounded">bug_report</span></span>
+            <span class="action-copy"><strong data-i18n="wheelFridaTitle">Disable Frida traces hiding</strong><small data-i18n="wheelFridaDesc">Stop hiding injection traces generated by Frida.</small></span>
+            <span class="toggle"><span></span></span>
+          </button>
+        </section>
+        <section class="panel-card morphe-manager-card">
+          <div class="morphe-manager-head">
+            <div>
+              <strong data-i18n="morpheManagerTitle">Morphe module management</strong>
+              <small data-i18n="morpheManagerDesc">Choose which installed Morphe modules may have their global mounts unmounted.</small>
+            </div>
+            <button class="small-action" id="morphe-refresh-btn" type="button">
+              <span class="material-symbols-rounded">refresh</span><span data-i18n="refresh">Refresh</span>
+            </button>
+          </div>
+          <div class="morphe-manager-note" data-i18n="morpheManagerNote">Enable the global mount-unmounting option above, then enable it for each Morphe module. Reboot to apply changes.</div>
+          <div id="morphe-module-list" class="morphe-module-list"><div class="empty" data-i18n="morpheLoading">Scanning installed modules…</div></div>
+        </section>
+      </div>
 
       <div class="section-header">
         <span class="material-symbols-rounded">route</span>
