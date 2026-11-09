@@ -3,8 +3,9 @@
 # A tool to collect extremely verbose debug log from the Android system.
 # LICENSE: BSD 3-Clause by ThePedroo
 
-# Don't run if logging is disabled
+# Don't run if logging or module is disabled
 [ -f /data/adb/rezygisk/log ] || exit 0
+[ -f /data/adb/modules/rezygisk/disable ] && exit 0
 
 SAVE_FOLDER=/data/local/tmp
 
