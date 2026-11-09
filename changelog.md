@@ -1,13 +1,17 @@
-> Release Date: 22/09/2026
+> Release Date: 09/11/2026
 
 ## What's New? 
-- Fixed 64-bit injection issues on some devices.
-- Fixed 32-bit injection issues on some devices.
-- Fixed a bootloop caused by failed Zygisk injection
-- Improved injection stability.
-- Improved remote memory handling.
-- Improved error handling during injection.
-- Improved cleanup after failed injection.
-- Improved register restoration after injection failure.
-- Added optional debugging for release builds.
-- Improved WebUI (lazy to write)
+- Integrated [Treat Wheel](https://github.com/MeowDump/Meow-Wheel) directly into MeowZygisk.
+- Updated WebUI with Meow Wheel controls and settings.
+- Improved Zygisk injection and module lifecycle handling.
+- Added Morphe module mount hiding support.
+- Improved Zygote mountinfo handling and cache management.
+- Improved process map and mount information handling.
+- Fixed 32-bit atexit boundary handling.
+- Improved DenyList handling and compatibility.
+- Added migration support for existing Meow Wheel installations.
+- Improved installation checks and architecture detection.
+- Added KernelSU command timeout handling.
+- Fixed WebUI switch state persistence.
+- Fixed HMA-OSS compatibility issues.
+- Various bug fixes and stability improvements.
