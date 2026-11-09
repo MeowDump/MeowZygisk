@@ -6,6 +6,33 @@ import ru from './translations/ru.js';
 
 const translations = { en, ar, zh, ru };
 const RTL_LANGS = ['ar'];
+
+const WHEEL_STATE_PATH = '/data/adb/treat_wheel/state';
+const WHEEL_STATUS_PATH = '/data/adb/treat_wheel/status';
+const WHEEL_SETTING_KEYS = [
+  'ignoring',
+  'disable_prop_spoofing',
+  'disable_gsi_hiding',
+  'disable_zygote_mountinfo_leak_fixing',
+  'disable_maps_hiding',
+  'disable_revanced_mounts_umount',
+  'disable_custom_font_loading',
+  'disable_denylist_logic_inversion',
+  'disable_module_loading_traces_hiding',
+  'disable_frida_traces_hiding'
+];
+const WHEEL_DEFAULTS = {
+  ignoring: false,
+  disable_prop_spoofing: false,
+  disable_gsi_hiding: false,
+  disable_zygote_mountinfo_leak_fixing: false,
+  disable_maps_hiding: false,
+  disable_revanced_mounts_umount: true,
+  disable_custom_font_loading: false,
+  disable_denylist_logic_inversion: true,
+  disable_module_loading_traces_hiding: false,
+  disable_frida_traces_hiding: false
+};
 let currentLang = localStorage.getItem('meowzygisk-lang') || 'en';
 
 function t(key) {
@@ -52,6 +79,14 @@ const state = {
   },
   debugEnabled: false,
   debugBuild: false,
+  wheelEnabled: false,
+  wheelSettings: { ...WHEEL_DEFAULTS },
+  wheelSettingsLoaded: false,
+  wheelSettingsBusy: false,
+  wheelSettingsError: '',
+  morpheModules: [],
+  morpheModulesLoaded: false,
+  morpheModulesBusy: false,
   lastUpdated: 0
 };
 
@@ -134,8 +169,209 @@ async function loadDeviceInfo() {
   state.device.name = [manufacturer, model].filter(Boolean).join(' ') || '—';
   state.device.android = android ? 'Android ' + android : '—';
   state.device.selinux = selinux || '—';
-  const treat = await run('[ -f /data/adb/modules/treat_wheel/service.sh ]');
+  const treat = await run('[ -f /data/adb/modules/rezygisk/meow-wheel/module.prop ]');
   state.device.treatWheel = treat.errno === 0;
+}
+
+async function loadWheelState() {
+  const [installed, disabled] = await Promise.all([
+    run('[ -f /data/adb/modules/rezygisk/meow-wheel/module.prop ]'),
+    run('[ -f /data/adb/treat_wheel/disabled ]')
+  ]);
+  state.wheelEnabled = installed.errno === 0 && disabled.errno !== 0;
+}
+
+async function loadWheelSettings() {
+  const path = shellQuote(WHEEL_STATE_PATH);
+  const script = [
+    'set -e',
+    '/system/bin/mkdir -p /data/adb/treat_wheel',
+    `[ -f ${path} ] || : > ${path}`,
+    `if ! /system/bin/grep -q '^disable_revanced_mounts_umount=' ${path}; then printf '%s\\n' 'disable_revanced_mounts_umount=true' >> ${path}; fi`,
+    `if ! /system/bin/grep -q '^disable_denylist_logic_inversion=' ${path}; then printf '%s\\n' 'disable_denylist_logic_inversion=true' >> ${path}; fi`,
+    `/system/bin/cat ${path}`
+  ].join('; ');
+  const result = await run('/system/bin/sh -c ' + shellQuote(script));
+  if (result.errno !== 0) {
+    state.wheelSettingsError = (result.stderr || '').trim() || `errno ${result.errno}`;
+    state.wheelSettingsLoaded = false;
+    showToast(t('wheelSettingsReadError') + ': ' + state.wheelSettingsError, 4500);
+    return false;
+  }
+
+  const values = { ...WHEEL_DEFAULTS };
+  String(result.stdout || '').split(/\r?\n/).forEach(line => {
+    const separator = line.indexOf('=');
+    if (separator < 1) return;
+    const key = line.slice(0, separator).trim();
+    if (Object.prototype.hasOwnProperty.call(values, key)) {
+      values[key] = line.slice(separator + 1).trim() === 'true';
+    }
+  });
+  state.wheelSettings = values;
+  state.wheelSettingsError = '';
+  state.wheelSettingsLoaded = true;
+  return true;
+}
+
+async function saveWheelSettings() {
+  const contents = WHEEL_SETTING_KEYS
+    .map(key => `${key}=${Boolean(state.wheelSettings[key]) ? 'true' : 'false'}`)
+    .join('\n') + '\n';
+  const tempPath = `${WHEEL_STATE_PATH}.tmp`;
+  const script = [
+    'set -e',
+    '/system/bin/mkdir -p /data/adb/treat_wheel',
+    `if [ -f ${shellQuote(WHEEL_STATE_PATH)} ]; then /system/bin/grep -vE '^(ignoring|disable_prop_spoofing|disable_gsi_hiding|disable_zygote_mountinfo_leak_fixing|disable_maps_hiding|disable_revanced_mounts_umount|disable_custom_font_loading|disable_denylist_logic_inversion|disable_module_loading_traces_hiding|disable_frida_traces_hiding)=.*$' ${shellQuote(WHEEL_STATE_PATH)} > ${shellQuote(tempPath)} || true; else : > ${shellQuote(tempPath)}; fi`,
+    `printf %s ${shellQuote(contents)} >> ${shellQuote(tempPath)}`,
+    `/system/bin/mv -f ${shellQuote(tempPath)} ${shellQuote(WHEEL_STATE_PATH)}`,
+    `/system/bin/rm -f ${shellQuote(WHEEL_STATUS_PATH)}`
+  ].join('; ');
+  const result = await run('/system/bin/sh -c ' + shellQuote(script));
+  if (result.errno !== 0) {
+    state.wheelSettingsError = (result.stderr || '').trim() || `errno ${result.errno}`;
+    showToast(t('wheelSettingsWriteError') + ': ' + state.wheelSettingsError, 4500);
+    return false;
+  }
+  state.wheelSettingsError = '';
+  return true;
+}
+
+function renderWheelSettings() {
+  document.querySelectorAll('[data-wheel-setting]').forEach(row => {
+    const key = row.dataset.wheelSetting;
+    const enabled = key === 'ignoring'
+      ? Boolean(state.wheelSettings[key])
+      : !Boolean(state.wheelSettings[key]);
+    const ignoring = Boolean(state.wheelSettings.ignoring);
+    const isMagisk = String(state.runtime?.root || '').toLowerCase().includes('magisk');
+    const restrictedDenylist = key === 'disable_denylist_logic_inversion' && !isMagisk;
+    const disabled = !state.wheelSettingsLoaded || state.wheelSettingsBusy || (ignoring && key !== 'ignoring') || restrictedDenylist;
+    row.disabled = disabled;
+    row.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    row.querySelector('.toggle')?.classList.toggle('on', enabled);
+  });
+}
+
+async function toggleWheelSetting(key) {
+  if (!WHEEL_SETTING_KEYS.includes(key) || state.wheelSettingsBusy) return;
+  const row = document.querySelector(`[data-wheel-setting="${key}"]`);
+  if (row?.disabled) return;
+  const previous = { ...state.wheelSettings };
+  state.wheelSettings[key] = !state.wheelSettings[key];
+  state.wheelSettingsBusy = true;
+  renderWheelSettings();
+  const saved = await saveWheelSettings();
+  state.wheelSettingsBusy = false;
+  if (!saved) state.wheelSettings = previous;
+  renderWheelSettings();
+  if (saved) showToast(t('wheelSettingsSaved'));
+}
+
+async function loadMorpheModules() {
+  state.morpheModulesBusy = true;
+  renderMorpheModules();
+  const script = String.raw`
+    for dir in /data/adb/modules/*; do
+      [ -d "$dir" ] || continue
+      prop="$dir/module.prop"
+      [ -f "$prop" ] || continue
+      id=$(sed -n 's/^id=//p' "$prop" | head -n 1)
+      name=$(sed -n 's/^name=//p' "$prop" | head -n 1)
+      description=$(sed -n 's/^description=//p' "$prop" | head -n 1)
+      [ -n "$id" ] || id=$(/system/bin/basename "$dir")
+      [ -n "$name" ] || name=$id
+      config="$dir/tw_config"
+      module_type=''
+      allow='false'
+      if [ -f "$config" ]; then
+        module_type=$(sed -n 's/^module_type=//p' "$config" | head -n 1)
+        allow=$(sed -n 's/^allow_umount=//p' "$config" | head -n 1)
+      fi
+      case "$id $name $description $module_type" in
+        *[Mm][Oo][Rr][Pp][Hh][Ee]*)
+          [ "$allow" = 'true' ] && enabled=1 || enabled=0
+          printf '%s\t%s\t%s\n' "$id" "$name" "$enabled"
+          ;;
+      esac
+    done
+  `;
+  const result = await run('/system/bin/sh -c ' + shellQuote(script));
+  state.morpheModulesBusy = false;
+  if (result.errno !== 0) {
+    state.morpheModulesLoaded = false;
+    state.morpheModules = [];
+    renderMorpheModules();
+    showToast(t('morpheReadError') + ': ' + (result.stderr || `errno ${result.errno}`), 4000);
+    return false;
+  }
+  state.morpheModules = String(result.stdout || '').split(/\r?\n/).filter(Boolean).map(line => {
+    const [id, name, enabled] = line.split('\t');
+    return { id, name: name || id, enabled: enabled === '1' };
+  }).filter(module => module.id && /^[A-Za-z0-9._-]+$/.test(module.id));
+  state.morpheModulesLoaded = true;
+  renderMorpheModules();
+  return true;
+}
+
+function renderMorpheModules() {
+  const container = $('morphe-module-list');
+  if (!container) return;
+  const refresh = $('morphe-refresh-btn');
+  if (refresh) refresh.disabled = state.morpheModulesBusy;
+  if (state.morpheModulesBusy) {
+    container.innerHTML = '<div class="empty">' + escapeHtml(t('morpheLoading')) + '</div>';
+    return;
+  }
+  if (!state.morpheModulesLoaded) {
+    container.innerHTML = '<div class="empty">' + escapeHtml(t('morpheLoadFailed')) + '</div>';
+    return;
+  }
+  if (!state.morpheModules.length) {
+    container.innerHTML = '<div class="empty">' + escapeHtml(t('morpheNoneFound')) + '</div>';
+    return;
+  }
+  container.innerHTML = state.morpheModules.map(module =>
+    '<button class="action-row morphe-module-row" type="button" data-morphe-module="' + escapeHtml(module.id) + '" aria-pressed="' + (module.enabled ? 'true' : 'false') + '" ' + (state.morpheModulesBusy ? 'disabled' : '') + '>' +
+      '<span class="action-icon"><span class="material-symbols-rounded">extension</span></span>' +
+      '<span class="action-copy"><strong>' + escapeHtml(module.name) + '</strong><small>' + escapeHtml(module.id) + '</small></span>' +
+      '<span class="toggle ' + (module.enabled ? 'on' : '') + '"><span></span></span>' +
+    '</button>'
+  ).join('');
+  container.querySelectorAll('[data-morphe-module]').forEach(row => {
+    row.addEventListener('click', () => toggleMorpheModule(row.dataset.morpheModule));
+  });
+}
+
+async function toggleMorpheModule(id) {
+  if (state.morpheModulesBusy || !/^[A-Za-z0-9._-]+$/.test(String(id))) return;
+  const module = state.morpheModules.find(item => item.id === id);
+  if (!module) return;
+  const nextEnabled = !module.enabled;
+  state.morpheModulesBusy = true;
+  renderMorpheModules();
+  const moduleDir = '/data/adb/modules/' + id;
+  const configPath = moduleDir + '/tw_config';
+  const tempPath = configPath + '.meowzygisk.tmp';
+  const script = [
+    'set -e',
+    '[ -d ' + shellQuote(moduleDir) + ' ]',
+    '[ ! -f ' + shellQuote(moduleDir + '/disable') + ' ]',
+    'if [ -f ' + shellQuote(configPath) + ' ]; then /system/bin/grep -vE "^(module_type|allow_umount)=" ' + shellQuote(configPath) + ' > ' + shellQuote(tempPath) + ' || true; else : > ' + shellQuote(tempPath) + '; fi',
+    'printf "%s\\n" ' + shellQuote('module_type=morphe') + ' ' + shellQuote('allow_umount=' + (nextEnabled ? 'true' : 'false')) + ' >> ' + shellQuote(tempPath),
+    '/system/bin/chmod 0644 ' + shellQuote(tempPath),
+    '/system/bin/mv -f ' + shellQuote(tempPath) + ' ' + shellQuote(configPath)
+  ].join('; ');
+  const result = await run('/system/bin/sh -c ' + shellQuote(script));
+  state.morpheModulesBusy = false;
+  if (result.errno !== 0) {
+    showToast(t('morpheWriteError') + ': ' + (result.stderr || `errno ${result.errno}`), 4000);
+    renderMorpheModules();
+    return;
+  }
+  module.enabled = nextEnabled;
+  renderMorpheModules();
+  showToast(t(nextEnabled ? 'morpheEnabled' : 'morpheDisabled'));
 }
 
 async function loadDebugState() {
@@ -259,6 +495,11 @@ function render() {
   $('treat-wheel').textContent = state.device.treatWheel ? t('installed') : t('unavailable');
   $('debug-toggle').classList.toggle('on', state.debugEnabled);
   $('debug-toggle-btn').setAttribute('aria-pressed', state.debugEnabled ? 'true' : 'false');
+  $('wheel-toggle').classList.toggle('on', state.wheelEnabled);
+  $('wheel-toggle-btn').setAttribute('aria-pressed', state.wheelEnabled ? 'true' : 'false');
+  $('wheel-toggle-btn').disabled = !state.device.treatWheel;
+  $('wheel-settings-btn').disabled = !state.device.treatWheel;
+  renderWheelSettings();
 }
 
 let staticInfoLoaded = false;
@@ -269,10 +510,10 @@ async function refresh(includeStatic = false) {
   refreshInProgress = true;
   try {
     if (!staticInfoLoaded || includeStatic) {
-      await Promise.all([loadRuntime(), loadVersion(), loadDeviceInfo(), loadDebugState()]);
+      await Promise.all([loadRuntime(), loadVersion(), loadDeviceInfo(), loadDebugState(), loadWheelState()]);
       staticInfoLoaded = true;
     } else {
-      await loadRuntime();
+      await Promise.all([loadRuntime(), loadWheelState()]);
     }
     render();
   } finally {
@@ -304,7 +545,7 @@ function diagnosticReport() {
     'Device:          ' + state.device.name,
     'Android:         ' + state.device.android,
     'SELinux:         ' + state.device.selinux,
-    'Treat Wheel:     ' + (state.device.treatWheel ? 'Installed' : 'Unavailable'),
+    'Meow Wheel:      ' + (state.device.treatWheel ? (state.wheelEnabled ? 'Enabled' : 'Disabled') : 'Unavailable'),
     '',
     'Overall status:  ' + status.title,
     'Monitor:         ' + monitorState,
@@ -384,6 +625,49 @@ $('debug-toggle-btn').addEventListener('click', async () => {
   await loadDebugState();
   render();
   showToast(state.debugEnabled ? t('debugEnabled') : t('debugDisabled'));
+});
+$('wheel-toggle-btn').addEventListener('click', async () => {
+  const nextEnabled = !state.wheelEnabled;
+  const marker = '/data/adb/treat_wheel/disabled';
+  const result = await run('/system/bin/mkdir -p /data/adb/treat_wheel && ' + (nextEnabled ? '/system/bin/rm -f ' + marker : '/system/bin/touch ' + marker) + ' && /system/bin/rm -f /data/adb/treat_wheel/status');
+  if (result.errno !== 0) {
+    showToast(result.stderr?.trim() || t('actionFailed'));
+    return;
+  }
+  state.wheelEnabled = nextEnabled;
+  render();
+  showToast(t(nextEnabled ? 'wheelEnabled' : 'wheelDisabled'));
+});
+$('wheel-settings-btn').addEventListener('click', async () => {
+  if (!state.device.treatWheel) {
+    showToast(t('wheelSettingsUnavailable'));
+    return;
+  }
+  const container = $('wheel-settings-container');
+  if (!container.hidden) {
+    container.hidden = true;
+    $('wheel-settings-btn').setAttribute('aria-expanded', 'false');
+    return;
+  }
+  container.hidden = false;
+  $('wheel-settings-btn').setAttribute('aria-expanded', 'true');
+  state.wheelSettingsBusy = true;
+  renderWheelSettings();
+  const loaded = await loadWheelSettings();
+  state.wheelSettingsBusy = false;
+  renderWheelSettings();
+  if (!loaded) return;
+  await loadMorpheModules();
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('morphe-refresh-btn').addEventListener('click', loadMorpheModules);
+$('wheel-settings-close').addEventListener('click', () => {
+  $('wheel-settings-container').hidden = true;
+  $('wheel-settings-btn').setAttribute('aria-expanded', 'false');
+  $('wheel-settings-btn').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+document.querySelectorAll('[data-wheel-setting]').forEach(row => {
+  row.addEventListener('click', () => toggleWheelSetting(row.dataset.wheelSetting));
 });
 $('run-action-btn').addEventListener('click', generateLogs);
 $('report-bug-btn').addEventListener('click', reportBug);
