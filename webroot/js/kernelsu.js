@@ -14,21 +14,37 @@ export function exec(command, options) {
 
   return new Promise((resolve, reject) => {
     const callbackFuncName = getUniqueCallbackName("exec");
+    const timeoutMs = 10000;
+    let settled = false;
+
+    function cleanup() {
+      clearTimeout(timeoutId);
+      delete window[callbackFuncName];
+    }
+
+    function finish(callback, value) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      callback(value);
+    }
+
+    const timeoutId = setTimeout(() => {
+      finish(resolve, {
+        errno: -2,
+        stdout: "",
+        stderr: `KernelSU command timed out after ${timeoutMs} ms: ${command}`
+      });
+    }, timeoutMs);
 
     window[callbackFuncName] = (errno, stdout, stderr) => {
-      resolve({ errno, stdout, stderr });
-      cleanup(callbackFuncName);
+      finish(resolve, { errno, stdout, stderr });
     };
-
-    function cleanup(successName) {
-      delete window[successName];
-    }
 
     try {
       ksu.exec(command, JSON.stringify(options), callbackFuncName);
     } catch (error) {
-      reject(error);
-      cleanup(callbackFuncName);
+      finish(reject, error);
     }
   });
 }
