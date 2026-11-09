@@ -1062,3 +1062,137 @@ h1 {
 .section-header > #runtime-count { margin-left: auto; }
 [dir="rtl"] .section-header > #module-total,
 [dir="rtl"] .section-header > #runtime-count { margin-left: 0; margin-right: auto; }
+
+#wheel-settings-container[hidden] {
+  display: none !important;
+}
+
+.wheel-settings-heading {
+  margin-top: 22px;
+}
+
+.wheel-settings-close {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+[dir="rtl"] .wheel-settings-close {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.wheel-settings-close:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.wheel-settings-close .material-symbols-rounded {
+  font-size: 16px;
+}
+
+.wheel-settings-note {
+  padding: 12px 14px;
+  color: var(--muted-2);
+  font-size: 10px;
+  line-height: 1.55;
+  border-bottom: 1px solid var(--line);
+}
+
+.wheel-setting-row:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.wheel-setting-row:disabled:hover {
+  background: transparent;
+}
+
+.morphe-manager-card {
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.morphe-manager-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.morphe-manager-head > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.morphe-manager-head strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.morphe-manager-head small {
+  color: var(--muted-2);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.morphe-manager-head .small-action {
+  flex: 0 0 auto;
+}
+
+.morphe-manager-note {
+  padding: 11px 16px;
+  color: var(--muted-2);
+  font-size: 10px;
+  line-height: 1.55;
+  border-bottom: 1px solid var(--line);
+}
+
+.morphe-module-list .empty {
+  padding: 18px 16px;
+  color: var(--muted-2);
+  font-size: 11px;
+  text-align: center;
+}
+
+.morphe-module-row {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.morphe-module-row:last-child {
+  border-bottom: 0;
+}
+
+.morphe-module-row:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+[dir="rtl"] .morphe-module-row {
+  text-align: right;
+}
+
+@media (max-width: 430px) {
+  .morphe-manager-head {
+    align-items: flex-start;
+  }
+  .morphe-manager-head .small-action {
+    padding: 6px 8px;
+  }
+}
