@@ -26,6 +26,25 @@ After rebooting, you can verify if ReZygisk is working properly by checking the 
 
 - If the issue occurs in the release build (the filename doesn't contain `debug`), open the WebUI, enable **DEBUG LOGGING**, and reboot your device. After rebooting, click the Action button and share the generated log file with [MEOWna](https://t.me/HelloMona).
 
+## Expected warning on KernelSU
+
+KernelSU logs this for our `sepolicy.rule` on every boot:
+
+```
+W KernelSU: ksud::sepolicy: apply sepolicy batch partially succeeded: 24/27
+```
+
+This is expected and is not the reason why Zygisk would not work. ksud submits the whole file as one
+batch and the kernel skips the statements whose types do not exist in the device's base policy, and
+it only reports a count instead of the statements: on KernelSU the two rules that can never apply are
+`allow zygote magisk lnk_file read` (KernelSU has no `magisk` type, the `ksu` rules below already
+cover it) and `allow zygote nsfs file {read open}` (no `nsfs` type on some vendors, for example
+OxygenOS 16), which is exactly the 3 atomic statements missing from `24/27`.
+
+Everything ReZygisk needs is still applied: `zygisk_file` exists in `/sys/fs/selinux/policy`,
+`/data/adb/rezygisk/cp64.sock` is labelled `u:object_r:zygisk_file:s0`, and modules are injected. If
+the module description shows `Status: ✅`, ignore the warning and look elsewhere.
+
 ## Support
 
 For any question related to this ReZygisk fork, feel free to contact me on telegram
