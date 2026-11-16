@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <linux/limits.h>
 
 #include "magisk.h"
 
@@ -89,28 +90,65 @@ bool magisk_uid_should_umount(const char *const process) {
   return result[0] != '\0';
 }
 
-bool magisk_uid_is_manager(uid_t uid) {
-  const char *const argv[] = { "magisk", "--sqlite", "select value from strings where key=\"requester\" limit 1", NULL };
+static bool manager_package_matches_uid(uid_t uid, const char *package_name) {
+  if (package_name == NULL || package_name[0] == '\0') return false;
 
-  char output[128];
-  if (!exec_command(output, sizeof(output), (const char *)path_to_magisk, argv)) {
-    LOGE("Failed to execute magisk binary: %s", strerror(errno));
+  unsigned int user_id = (unsigned int)uid / 100000u;
 
-    return false;
-  }
-
-  char stat_path[PATH_MAX] = "/data/user_de/0/com.topjohnwu.magisk";
-  if (output[0] != '\0')
-    snprintf(stat_path, sizeof(stat_path), "/data/user_de/0/%s", output + strlen("value="));
+  char data_path[PATH_MAX];
+  int path_len = snprintf(data_path, sizeof(data_path),
+                          "/data/user_de/%u/%s", user_id, package_name);
+  if (path_len < 0 || (size_t)path_len >= sizeof(data_path)) return false;
 
   struct stat st;
-  if (stat(stat_path, &st) == -1) {
+  if (stat(data_path, &st) == -1) {
     if (errno != ENOENT) {
-      LOGE("Failed to stat %s: %s", stat_path, strerror(errno));
+      LOGE("Failed to stat %s: %s", data_path, strerror(errno));
     }
 
     return false;
   }
 
   return st.st_uid == uid;
+}
+
+bool magisk_uid_is_manager(uid_t uid) {
+  const char *const argv[] = {
+    "magisk", "--sqlite",
+    "select value from strings where key=\"requester\" limit 1",
+    NULL
+  };
+
+  char output[128] = { 0 };
+  if (!exec_command(output, sizeof(output), (const char *)path_to_magisk, argv)) {
+    LOGE("Failed to execute magisk binary: %s", strerror(errno));
+    return false;
+  }
+
+  if (strncmp(output, "value=", strlen("value=")) == 0) {
+    const char *requester = output + strlen("value=");
+    if (manager_package_matches_uid(uid, requester)) {
+      LOGI("Detected Magisk Manager package: %s (uid=%u)", requester, uid);
+      return true;
+    }
+  }
+
+  static const char *const known_manager_packages[] = {
+    "com.topjohnwu.magisk",
+    "io.github.vvb2060.magisk",
+    "io.github.seyud.weave"
+  };
+
+  for (size_t i = 0;
+       i < sizeof(known_manager_packages) / sizeof(known_manager_packages[0]);
+       i++) {
+    const char *package_name = known_manager_packages[i];
+
+    if (manager_package_matches_uid(uid, package_name)) {
+      LOGI("Detected Magisk Manager package: %s (uid=%u)", package_name, uid);
+      return true;
+    }
+  }
+
+  return false;
 }
