@@ -846,14 +846,14 @@ static char post_section[1024];
 
 #define WRITE_STATUS_ABI(suffix)                                                     \
   if (status ## suffix.supported) {                                                  \
-    strcat(status_text, "  |  Zygisk " # suffix "-bit: ");                          \
+    strcat(status_text, "  |  Zygisk " # suffix "-bit: ");                           \
                                                                                      \
     if (tracing_state != TRACING) strcat(status_text, "❌");                         \
-    else if (status ## suffix.zygote_injected && status ## suffix.daemon_running)    \
+    else if (status ## suffix.zygote_injected)                                       \
       strcat(status_text, "✅");                                                     \
     else strcat(status_text, "⚠️");                                                  \
                                                                                      \
-    if (!status ## suffix.daemon_running) {                                          \
+    if (!status ## suffix.zygote_injected && !status ## suffix.daemon_running) {     \
       if (status ## suffix.daemon_error_info) {                                      \
         strcat(status_text, "(ReZygiskd: ");                                         \
         strcat(status_text, status ## suffix.daemon_error_info);                     \
