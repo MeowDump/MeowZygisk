@@ -76,17 +76,9 @@ else
 fi
 
 for incompatible_module in zygisk_assistant nohello; do
-  for module_dir in \
-    "/data/adb/modules/$incompatible_module" \
-    "/data/adb/modules_update/$incompatible_module"; do
-
-    if [ -d "$module_dir" ]; then
-      touch "$module_dir/remove"
-      ui_print "! $incompatible_module is incompatible with integrated Meow Wheel."
-      ui_print "! Removal has been scheduled. Reboot to apply changes."
-      break
-    fi
-  done
+  if [ -d "/data/adb/modules/$incompatible_module" ] || [ -d "/data/adb/modules_update/$incompatible_module" ]; then
+    abort "! $incompatible_module is incompatible with integrated Meow Wheel. Remove it before installing MeowZygisk."
+  fi
 done
 
 ui_print "- Extracting verify.sh"
@@ -94,7 +86,11 @@ unzip -o "$ZIPFILE" 'verify.sh' -d "$TMPDIR" >&2
 if [ ! -f "$TMPDIR/verify.sh" ]; then
   ui_print "*********************************************************"
   ui_print "! Unable to extract verify.sh!"
-  ui_print "! This zip may be corrupted, please try downloading again"
+  ui_print "! This zip is corrupted, please download it from release source"
+  sleep 3
+  ui_print " "
+  ui_print "+ Redirecting to official module release source"
+  nohup am start -a android.intent.action.VIEW -d "https://github.com/meowdump/MeowZygisk" > /dev/null 2>&1 &
   abort    "*********************************************************"
 fi
 . "$TMPDIR/verify.sh"
@@ -124,7 +120,7 @@ extract "$ZIPFILE" 'mda.sh' "/data/adb/post-fs-data.d/"
 chmod 0755 "/data/adb/post-fs-data.d/mda.sh"
 
 # Nuke ZN if exist
-for d in /data/adb/modules/zygisksu /data/adb/modules_update/zygisksu; do [ -d "$d" ] && touch "$d/remove" "$d/disable"; done; [ -d /data/adb/modules/zygisksu ] || [ -d /data/adb/modules_update/zygisksu ] && echo "ZygiskNext will be removed on next reboot"
+for d in /data/adb/modules/zygisksu /data/adb/modules_update/zygisksu /data/adb/modules/zn_magisk_compat /data/adb/modules_update/zn_magisk_compat; do [ -d "$d" ] && touch "$d/remove"; done; [ -d /data/adb/modules/zygisksu ] || [ -d /data/adb/modules_update/zygisksu ] || [ -d /data/adb/modules/zn_magisk_compat ] || [ -d /data/adb/modules_update/zn_magisk_compat ] && echo "ZygiskNext will be removed on next reboot"
 
 # INFO: KernelSU 2.x.x and below runs post-fs-data.d before mounting
 #         the modules. This disallows us to clean our own module.prop.
@@ -251,14 +247,18 @@ fi
 ui_print "- Installing integrated Meow Wheel"
 mkdir -p "$MODPATH/meow-wheel"
 unzip -o "$ZIPFILE" "meow-wheel/*" -d "$MODPATH" >&2
+
 if ! rm -rf "$MODPATH/meow-wheel/zygisk"; then
   abort "! Unable to remove obsolete nested Meow Wheel libraries"
 fi
-if [ ! -f "$MODPATH/meow-wheel/module.prop" ] || [ ! -f "$MODPATH/meow-wheel/LICENSE" ] || [ ! -d "$MODPATH/meow-wheel/cmd" ]; then
-  abort "! Meow Wheel payload is missing or incomplete"
+
+if [ ! -d "$MODPATH/meow-wheel/cmd" ]; then
+  abort "! Meow Wheel backend is missing"
 fi
+
 set_perm_recursive "$MODPATH/meow-wheel" 0 0 0755 0755
 chmod 0644 "$MODPATH/meow-wheel/module.prop" "$MODPATH/meow-wheel/LICENSE"
+
 for wheel_binary in "$MODPATH"/meow-wheel/cmd/*/treat-wheel; do
   [ -f "$wheel_binary" ] && chmod 0755 "$wheel_binary"
 done
@@ -284,8 +284,9 @@ for old_wheel in /data/adb/modules/treat_wheel /data/adb/modules_update/treat_wh
     fi
   fi
 done
+
 # The integrated copy is now installed; remove standalone module directories to
-# prevent ReZygisk from loading Meow Wheel twice
+# prevent ReZygisk from loading Meow Wheel twice. Keep persistent Wheel settings.
 if ! rm -rf /data/adb/modules/treat_wheel /data/adb/modules_update/treat_wheel; then
   abort "! Unable to remove the previous standalone Meow Wheel installation"
 fi
@@ -293,6 +294,7 @@ fi
 if ! mkdir -p /data/adb/treat_wheel; then
   abort "! Unable to prepare Meow Wheel's persistent configuration directory"
 fi
+
 if [ "$WHEEL_STANDALONE_FOUND" = true ]; then
   if [ "$WHEEL_WAS_DISABLED" = true ]; then
     touch /data/adb/treat_wheel/disabled || abort "! Unable to migrate Meow Wheel's disabled state"
@@ -300,14 +302,21 @@ if [ "$WHEEL_STANDALONE_FOUND" = true ]; then
     rm -f /data/adb/treat_wheel/disabled || abort "! Unable to migrate Meow Wheel's enabled state"
   fi
 fi
+
 if [ ! -f /data/adb/treat_wheel/state ]; then
   : > /data/adb/treat_wheel/state || abort "! Unable to initialize Meow Wheel's configuration"
 fi
+
 if ! grep -q '^disable_revanced_mounts_umount=' /data/adb/treat_wheel/state; then
   echo 'disable_revanced_mounts_umount=true' >> /data/adb/treat_wheel/state || abort "! Unable to initialize Meow Wheel defaults"
 fi
+
 if ! grep -q '^disable_denylist_logic_inversion=' /data/adb/treat_wheel/state; then
-  echo 'disable_denylist_logic_inversion=true' >> /data/adb/treat_wheel/state || abort "! Unable to initialize Meow Wheel defaults"
+  if [ -f /data/adb/magisk/magisk ]; then
+    echo 'disable_denylist_logic_inversion=false' >> /data/adb/treat_wheel/state
+  else
+    echo 'disable_denylist_logic_inversion=true' >> /data/adb/treat_wheel/state
+  fi || abort "! Unable to initialize Meow Wheel defaults"
 fi
 
 # If Huawei's Maple is enabled, system_server is created with a special way which is out of Zygisk's control
