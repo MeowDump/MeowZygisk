@@ -1,234 +1,151 @@
 <!doctype html>
-<html lang="en" dir="ltr">
+<html lang="en" dir="ltr" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0a0d14">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#111318">
   <title>Meow Zygisk</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0,0&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0,0&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://mui.kernelsu.org/internal/insets.css">
+  <link rel="stylesheet" href="https://mui.kernelsu.org/internal/colors.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navigation">
       <div class="brand">
-        <div class="brand-mark"><span class="material-symbols-rounded">deployed_code</span></div>
-        <div>
-          <div class="brand-name">Meow Zygisk</div>
-          <div class="brand-sub" id="brand-version">Standalone Zygisk</div>
-        </div>
+        <span class="brand-mark"><span class="material-symbols-rounded">deployed_code</span></span>
+        <span class="brand-copy"><a class="brand-github" href="https://github.com/MeowDump/MeowZygisk" target="_blank" rel="noopener noreferrer">Meow Zygisk</a><small id="brand-version">Standalone Zygisk</small></span>
       </div>
-      <div class="sidebar-bottom">
-        <button class="side-action" id="refresh-btn"><span class="material-symbols-rounded">refresh</span><span data-i18n="refresh">Refresh</span></button>
+      <div class="sidebar-label" data-i18n="menu">MENU</div>
+      <nav class="side-nav">
+        <a class="nav-item active" href="#overview"><span class="material-symbols-rounded">space_dashboard</span><span data-i18n="overview">Overview</span></a>
+        <a class="nav-item" href="#visibility-section"><span class="material-symbols-rounded">visibility</span><span data-i18n="runtimeBehaviour">Runtime behaviour</span></a>
+        <a class="nav-item" href="#actions-section"><span class="material-symbols-rounded">tune</span><span data-i18n="actions">Actions</span></a>
+        <a class="nav-item" href="#modules-section"><span class="material-symbols-rounded">extension</span><span data-i18n="loadedModules">Loaded modules</span></a>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-tools">
         <button class="side-action" id="copy-report-btn"><span class="material-symbols-rounded">content_copy</span><span data-i18n="copyReport">Copy report</span></button>
-        <div class="sidebar-meta"><span id="sidebar-status">Checking runtime</span></div>
       </div>
+      <div class="sidebar-footer"><span class="live-dot"></span><span id="sidebar-status">Checking runtime</span></div>
     </aside>
-    <main class="main">
+    <main class="main" id="overview">
       <header class="topbar">
-        <div><h1 id="page-title">Meow Zygisk</h1></div>
+        <div class="mobile-brand"><span class="brand-mark"><span class="material-symbols-rounded">deployed_code</span></span><a class="brand-github" href="https://github.com/MeowDump/MeowZygisk" target="_blank" rel="noopener noreferrer">Meow Zygisk</a></div>
+        <div class="breadcrumb"><span data-i18n="workspace">Workspace</span><span class="material-symbols-rounded">chevron_right</span><strong data-i18n="overview">Overview</strong></div>
         <div class="top-actions">
-          <button class="icon-btn" id="lang-btn" title="Language"><span class="material-symbols-rounded">translate</span></button>
-          <button class="icon-btn" id="support-btn" title="Support"><span class="material-symbols-rounded">open_in_new</span></button>
-          <button class="icon-btn" id="theme-btn" title="Toggle theme"><span class="material-symbols-rounded">dark_mode</span></button>
+          <button class="icon-btn" id="lang-btn" title="Language" aria-label="Language" data-i18n-title="language"><span class="material-symbols-rounded">language</span></button>
+          <button class="icon-btn" id="support-btn" title="Donate" aria-label="Donate" data-i18n-title="donate"><span class="material-symbols-rounded">volunteer_activism</span></button>
+          <button class="icon-btn" id="theme-toggle" type="button" title="Change theme" aria-label="Change theme" data-i18n-title="changeTheme" aria-live="polite"><span class="material-symbols-rounded" id="theme-icon">brightness_auto</span></button>
         </div>
       </header>
-      <div class="hero" id="hero-card">
-        <div class="hero-icon"><span class="material-symbols-rounded" id="hero-icon">verified</span></div>
-        <div class="hero-copy">
-          <div class="hero-label" id="hero-label">Checking Meow Zygisk</div>
-          <div class="hero-title" id="hero-title">Reading runtime state...</div>
-          <div class="hero-description" id="hero-description">The dashboard reads the monitor state directly from the device.</div>
-        </div>
-        <button class="hero-refresh" id="hero-refresh"><span class="material-symbols-rounded">sync</span><span data-i18n="refresh">Refresh</span></button>
-      </div>
-      <div class="debug-warning" id="debug-warning" hidden></div>
-      <div class="recovery-card" id="recovery-card" hidden>
-        <div class="recovery-icon"><span class="material-symbols-rounded">support_agent</span></div>
-        <div class="recovery-copy">
-          <strong data-i18n="diagnosticProblem">Something went wrong</strong>
-          <span id="recovery-message" data-i18n="diagnosticProblemDesc">The UI could not read the runtime information correctly.</span>
-        </div>
-        <div class="recovery-actions">
-          <button class="small-action" id="recovery-generate"><span class="material-symbols-rounded">terminal</span><span data-i18n="generateLogs">Generate logs</span></button>
-          <button class="small-action" id="recovery-report"><span class="material-symbols-rounded">bug_report</span><span data-i18n="reportBug">Report a bug</span></button>
-        </div>
-      </div>
-
-      <div class="section-header">
-        <span class="material-symbols-rounded">hub</span>
-        <span data-i18n="monitor">Monitor</span>
-      </div>
-      <div class="metric-grid monitor-metrics">
-        <article class="metric-card accent-blue">
-          <div class="metric-head"><span class="material-symbols-rounded">hub</span><span data-i18n="monitor">Monitor</span></div>
-          <div class="metric-value" id="metric-monitor">—</div>
-        </article>
-        <article class="metric-card accent-green">
-          <div class="metric-head"><span class="material-symbols-rounded">memory</span><span data-i18n="architectures">Architectures</span></div>
-          <div class="metric-value" id="metric-arch">—</div>
-        </article>
-        <article class="metric-card accent-purple">
-          <div class="metric-head"><span class="material-symbols-rounded">extension</span><span data-i18n="modules">Modules</span></div>
-          <div class="metric-value" id="metric-modules">—</div>
-        </article>
-        <article class="metric-card accent-amber">
-          <div class="metric-head"><span class="material-symbols-rounded">security</span><span data-i18n="root">Root</span></div>
-          <div class="metric-value small" id="metric-root">—</div>
-        </article>
-      </div>
-
-      <div>
-        <div class="section-header">
-          <span class="material-symbols-rounded">extension</span>
-          <span data-i18n="loadedModules">Loaded modules</span>
-          <span id="module-total">0</span>
-        </div>
-        <section class="panel-card table-card"><div class="module-table" id="module-table"></div></section>
-      </div>
-
-      <div class="section-header">
-        <span class="material-symbols-rounded">build</span>
-        <span data-i18n="actions">Actions</span>
-      </div>
-      <section class="panel-card action-card">
-        <button class="action-row" id="debug-toggle-btn">
-          <span class="action-icon"><span class="material-symbols-rounded">bug_report</span></span>
-          <span class="action-copy"><strong data-i18n="debugLogging">Debug logging</strong><small data-i18n="debugLoggingDesc">Enable or disable ReZygisk debug logging.</small></span>
-          <span class="toggle" id="debug-toggle"><span></span></span>
-        </button>
-        <button class="action-row" id="wheel-toggle-btn">
-          <span class="action-icon"><span class="material-symbols-rounded">donut_large</span></span>
-          <span class="action-copy"><strong data-i18n="meowWheel">Meow Wheel</strong><small data-i18n="meowWheelDesc">Enable or disable Meow Wheel independently. Reboot to apply fully.</small></span>
-          <span class="toggle" id="wheel-toggle"><span></span></span>
-        </button>
-        <button class="action-row" id="wheel-settings-btn" aria-expanded="false">
-          <span class="action-icon"><span class="material-symbols-rounded">tune</span></span>
-          <span class="action-copy"><strong data-i18n="wheelSettings">Meow Wheel settings</strong><small data-i18n="wheelSettingsDesc">Configure Meow Wheel features inside this dashboard.</small></span>
-          <span class="material-symbols-rounded action-arrow">chevron_right</span>
-        </button>
-        <button class="action-row" id="run-action-btn">
-          <span class="action-icon"><span class="material-symbols-rounded">terminal</span></span>
-          <span class="action-copy"><strong data-i18n="generateLogs">Generate logs</strong><small data-i18n="generateLogsDesc">Run the ReZygisk action script and show its output.</small></span>
-          <span class="material-symbols-rounded action-arrow">chevron_right</span>
-        </button>
-        <button class="action-row" id="copy-information-btn">
-          <span class="action-icon"><span class="material-symbols-rounded">content_copy</span></span>
-          <span class="action-copy"><strong data-i18n="copyInformation">Copy information</strong><small data-i18n="copyInformationDesc">Copy the information currently displayed by the UI.</small></span>
-          <span class="material-symbols-rounded action-arrow">content_copy</span>
-        </button>
-        <button class="action-row" id="report-bug-btn">
-          <span class="action-icon"><span class="material-symbols-rounded">bug_report</span></span>
-          <span class="action-copy"><strong data-i18n="reportBug">Report a bug</strong><small data-i18n="reportBugDesc">Open the developer support chat.</small></span>
-          <span class="material-symbols-rounded action-arrow">open_in_new</span>
-        </button>
-      </section>
-
-      <div id="wheel-settings-container" hidden>
-        <div class="section-header wheel-settings-heading">
-          <span class="material-symbols-rounded">tune</span>
-          <span data-i18n="wheelSettingsTitle">Meow Wheel settings</span>
-          <button class="wheel-settings-close" id="wheel-settings-close" type="button">
-            <span class="material-symbols-rounded">close</span>
-            <span data-i18n="close">Close</span>
-          </button>
-        </div>
-        <section class="panel-card action-card wheel-settings-card">
-          <div class="wheel-settings-note" data-i18n="wheelSettingsNote">Some options may require a reboot. Check each option's description.</div>
-          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="ignoring" aria-pressed="false">
-            <span class="action-icon"><span class="material-symbols-rounded">block</span></span>
-            <span class="action-copy"><strong data-i18n="wheelIgnoreTitle">Ignore everyone and everything</strong><small data-i18n="wheelIgnoreDesc">Temporarily disable all Meow Wheel hiding features.</small></span>
-            <span class="toggle"><span></span></span>
-          </button>
-          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_prop_spoofing" aria-pressed="false">
-            <span class="action-icon"><span class="material-symbols-rounded">tune</span></span>
-            <span class="action-copy"><strong data-i18n="wheelPropSpoofTitle">Disable prop spoofing</strong><small data-i18n="wheelPropSpoofDesc">Stop spoofing sensitive and custom ROM properties. A reboot is required.</small></span>
-            <span class="toggle"><span></span></span>
-          </button>
-          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_gsi_hiding" aria-pressed="false">
-            <span class="action-icon"><span class="material-symbols-rounded">visibility_off</span></span>
-            <span class="action-copy"><strong data-i18n="wheelGsiTitle">Disable GSI traces hiding</strong><small data-i18n="wheelGsiDesc">Stop hiding GSI traces.</small></span>
-            <span class="toggle"><span></span></span>
-          </button>
-          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_zygote_mountinfo_leak_fixing" aria-pressed="false">
-            <span class="action-icon"><span class="material-symbols-rounded">security</span></span>
-            <span class="action-copy"><strong data-i18n="wheelZygoteTitle">Disable Zygote mountinfo leak fixing</strong><small data-i18n="wheelZygoteDesc">Stop fixing the mountinfo leak created by Zygote. Requires Android 11 or higher.</small></span>
-            <span class="toggle"><span></span></span>
-          </button>
-          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_maps_hiding" aria-pressed="false">
-            <span class="action-icon"><span class="material-symbols-rounded">map</span></span>
-            <span class="action-copy"><strong data-i18n="wheelMapsTitle">Disable maps hiding</strong><small data-i18n="wheelMapsDesc">Stop hiding suspicious memory mappings.</small></span>
-            <span class="toggle"><span></span></span>
-          </button>
-          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_revanced_mounts_umount" aria-pressed="false">
-            <span class="action-icon"><span class="material-symbols-rounded">layers_clear</span></span>
-            <span class="action-copy"><strong data-i18n="wheelRevancedTitle">Disable ReVanced modules mounts hiding</strong><small data-i18n="wheelRevancedDesc">Stop unmounting mounts created globally by supported ReVanced modules.</small></span>
-            <span class="toggle"><span></span></span>
-          </button>
-          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_custom_font_loading" aria-pressed="false">
-            <span class="action-icon"><span class="material-symbols-rounded">font_download_off</span></span>
-            <span class="action-copy"><strong data-i18n="wheelFontTitle">Disable custom font loading</strong><small data-i18n="wheelFontDesc">Stop loading custom fonts from the system.</small></span>
-            <span class="toggle"><span></span></span>
-          </button>
-          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_denylist_logic_inversion" aria-pressed="false">
-            <span class="action-icon"><span class="material-symbols-rounded">rule</span></span>
-            <span class="action-copy"><strong data-i18n="wheelDenylistTitle">Disable denylist logic inversion</strong><small data-i18n="wheelDenylistDesc">Stop inverting Magisk DenyList behavior.</small></span>
-            <span class="toggle"><span></span></span>
-          </button>
-          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_module_loading_traces_hiding" aria-pressed="false">
-            <span class="action-icon"><span class="material-symbols-rounded">extension_off</span></span>
-            <span class="action-copy"><strong data-i18n="wheelModuleTracesTitle">Disable module loading traces hiding</strong><small data-i18n="wheelModuleTracesDesc">Stop hiding traces generated by some modules during loading.</small></span>
-            <span class="toggle"><span></span></span>
-          </button>
-          <button class="action-row wheel-setting-row" type="button" data-wheel-setting="disable_frida_traces_hiding" aria-pressed="false">
-            <span class="action-icon"><span class="material-symbols-rounded">bug_report</span></span>
-            <span class="action-copy"><strong data-i18n="wheelFridaTitle">Disable Frida traces hiding</strong><small data-i18n="wheelFridaDesc">Stop hiding injection traces generated by Frida.</small></span>
-            <span class="toggle"><span></span></span>
-          </button>
+      <div class="page-content">
+        <section class="hero" id="hero-card" aria-live="polite">
+          <div class="hero-leading"><span class="material-symbols-rounded" id="hero-icon">verified</span></div>
+          <div class="hero-copy"><div class="hero-label" id="hero-label">Checking Meow Zygisk</div><h2 id="hero-title">Reading runtime state...</h2><p id="hero-description">The dashboard reads the monitor state directly from the device.</p></div>
         </section>
-        <section class="panel-card morphe-manager-card">
-          <div class="morphe-manager-head">
-            <div>
-              <strong data-i18n="morpheManagerTitle">Morphe module management</strong>
-              <small data-i18n="morpheManagerDesc">Choose which installed Morphe modules may have their global mounts unmounted.</small>
+        <div class="debug-warning" id="debug-warning" hidden></div>
+        <section class="recovery-card" id="recovery-card" hidden>
+          <div class="recovery-icon"><span class="material-symbols-rounded">health_and_safety</span></div>
+          <div class="recovery-copy"><strong data-i18n="diagnosticProblem">Something went wrong</strong><span id="recovery-message" data-i18n="diagnosticProblemDesc">The UI could not read the runtime information correctly.</span></div>
+          <div class="recovery-actions">
+            <button class="text-button" id="recovery-report"><span class="material-symbols-rounded">bug_report</span><span data-i18n="reportBug">Report a bug</span></button>
+          </div>
+        </section>
+        <section class="dashboard-section monitor-section" id="monitor-section">
+          <div class="section-heading"><div><h2 data-i18n="monitor">Monitor</h2></div></div>
+          <div class="monitor-panel">
+            <div class="monitor-primary">
+              <div class="monitor-primary-icon"><span class="material-symbols-rounded">monitor_heart</span></div>
+              <div class="monitor-primary-copy"><span data-i18n="runtimeMonitor">RUNTIME MONITOR</span><strong id="metric-monitor">—</strong></div>
+              <div class="monitor-pulse" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
             </div>
-            <button class="small-action" id="morphe-refresh-btn" type="button">
-              <span class="material-symbols-rounded">refresh</span><span data-i18n="refresh">Refresh</span>
+            <div class="monitor-divider"></div>
+            <div class="monitor-stats">
+              <div class="monitor-stat"><span class="material-symbols-rounded">shield</span><div><small data-i18n="root">Root</small><strong id="metric-root">—</strong></div></div>
+              <div class="monitor-stat"><span class="material-symbols-rounded">verified_user</span><div><small data-i18n="selinux">SELinux</small><strong id="selinux-status">—</strong></div></div>
+            </div>
+          <div class="monitor-device">
+            <div class="monitor-device-heading"><h3 data-i18n="deviceInformation">Device information</h3></div>
+            <div class="device-grid">
+              <div class="device-item"><span class="material-symbols-rounded">smartphone</span><div><small data-i18n="deviceName">Device</small><strong id="device-name">—</strong></div></div>
+              <div class="device-item"><span class="material-symbols-rounded">android</span><div><small data-i18n="androidVersion">Android</small><strong id="android-version">—</strong></div></div>
+            </div>
+          </div>
+          </div>
+        </section>
+        <section class="dashboard-section" id="visibility-section">
+          <div class="section-heading"><div><h2 data-i18n="runtimeBehaviour">Runtime behaviour</h2></div></div>
+          <div class="surface-card feature-card">
+          <div class="pause-warning" id="pause-warning" hidden role="alert">
+            <div class="pause-warning-icon"><span class="material-symbols-rounded">warning</span></div>
+            <div class="pause-warning-copy">
+              <strong data-i18n="pauseRulesTitle">Pause all hiding rules?</strong>
+              <p data-i18n="pauseRulesWarning">This temporarily disables every hiding rule. Root, module and runtime traces may become visible to apps that inspect your device.</p>
+              <div class="pause-warning-actions">
+                <button class="pause-cancel" id="pause-cancel" type="button" data-i18n="cancel">Cancel</button>
+                <button class="pause-confirm" id="pause-confirm" type="button" data-i18n="pauseHidingRules">Pause hiding rules</button>
+              </div>
+            </div>
+          </div>
+          <button class="magisk-detection-button" id="magisk-detection-btn" type="button" data-feature-setting="disable_denylist_logic_inversion" aria-pressed="false" disabled>
+            <span class="magisk-logo" aria-hidden="true">
+              <span class="magisk-hash">#</span>
+            </span>
+            <span class="magisk-button-copy"><strong data-i18n="hideMagiskDetection">Hide Magisk detection</strong><small id="magisk-detection-status" data-i18n="checkingState">Checking state…</small></span>
+            <span class="magisk-state" id="magisk-detection-state">—</span>
+          </button>
+            <button class="feature-row" type="button" data-feature-setting="ignoring" aria-pressed="false"><span class="feature-icon"><span class="material-symbols-rounded">pause_circle</span></span><span class="feature-copy"><strong data-i18n="pauseRules">Pause all hiding rules</strong><small data-i18n="pauseRulesDesc">Temporarily bypass every visibility rule.</small></span><span class="toggle"><span></span></span></button>
+            <button class="feature-row" type="button" data-feature-setting="disable_prop_spoofing" aria-pressed="false"><span class="feature-icon"><span class="material-symbols-rounded">tune</span></span><span class="feature-copy"><strong data-i18n="spoofProperties">Spoof system properties</strong><small data-i18n="spoofPropertiesDesc">Apply the configured property spoofing behaviour.</small></span><span class="toggle"><span></span></span></button>
+            <button class="feature-row" type="button" data-feature-setting="disable_gsi_hiding" aria-pressed="false"><span class="feature-icon"><span class="material-symbols-rounded">visibility_off</span></span><span class="feature-copy"><strong data-i18n="hideGsi">Hide GSI indicators</strong><small data-i18n="hideGsiDesc">Conceal Generic System Image indicators.</small></span><span class="toggle"><span></span></span></button>
+            <button class="feature-row" type="button" data-feature-setting="disable_zygote_mountinfo_leak_fixing" aria-pressed="false"><span class="feature-icon"><span class="material-symbols-rounded">folder_managed</span></span><span class="feature-copy"><strong data-i18n="fixMountInfo">Fix Zygote mountinfo leaks</strong><small data-i18n="fixMountInfoDesc">Prevent mount information from exposing unwanted details.</small></span><span class="toggle"><span></span></span></button>
+            <button class="feature-row" type="button" data-feature-setting="disable_maps_hiding" aria-pressed="false"><span class="feature-icon"><span class="material-symbols-rounded">map</span></span><span class="feature-copy"><strong data-i18n="hideMemoryMaps">Hide suspicious memory mappings</strong><small data-i18n="hideMemoryMapsDesc">Conceal suspicious memory mappings.</small></span><span class="toggle"><span></span></span></button>
+            <button class="feature-row" type="button" data-feature-setting="disable_revanced_mounts_umount" aria-pressed="false"><span class="feature-icon"><span class="material-symbols-rounded">layers_clear</span></span><span class="feature-copy"><strong data-i18n="cleanupMounts">Clean up ReVanced / Morphe mounts</strong><small data-i18n="cleanupMountsDesc">Remove exposed ReVanced and Morphe mount traces.</small></span><span class="toggle"><span></span></span></button>
+            <button class="feature-row" type="button" data-feature-setting="disable_custom_font_loading" aria-pressed="false"><span class="feature-icon"><span class="material-symbols-rounded">font_download</span></span><span class="feature-copy"><strong data-i18n="customFonts">Load custom fonts</strong><small data-i18n="customFontsDesc">Allow custom system font loading.</small></span><span class="toggle"><span></span></span></button>
+            <button class="feature-row" type="button" data-feature-setting="disable_module_loading_traces_hiding" aria-pressed="false"><span class="feature-icon"><span class="material-symbols-rounded">extension_off</span></span><span class="feature-copy"><strong data-i18n="hideModuleTraces">Hide module loading traces</strong><small data-i18n="hideModuleTracesDesc">Conceal traces generated during module loading.</small></span><span class="toggle"><span></span></span></button>
+            <button class="feature-row" type="button" data-feature-setting="disable_frida_traces_hiding" aria-pressed="false"><span class="feature-icon"><span class="material-symbols-rounded">bug_report</span></span><span class="feature-copy"><strong data-i18n="hideFridaTraces">Hide Frida traces</strong><small data-i18n="hideFridaTracesDesc">Conceal injection traces generated by Frida.</small></span><span class="toggle"><span></span></span></button>
+          </div>
+        </section>
+        <section class="dashboard-section" id="actions-section">
+          <div class="section-heading"><div><h2 data-i18n="actions">Actions</h2></div></div>
+          <div class="surface-card action-card">
+            <button class="action-row" id="debug-toggle-btn">
+              <span class="action-icon"><span class="material-symbols-rounded">bug_report</span></span><span class="action-copy"><strong data-i18n="debugLogging">Debug logging</strong></span><span class="toggle" id="debug-toggle"><span></span></span>
+            </button>
+            <button class="action-row" id="copy-information-btn">
+              <span class="action-icon"><span class="material-symbols-rounded">content_copy</span></span><span class="action-copy"><strong data-i18n="copyInformation">Copy information</strong></span><span class="material-symbols-rounded action-arrow">content_copy</span>
+            </button>
+            <button class="action-row" id="report-bug-btn">
+              <span class="action-icon"><span class="material-symbols-rounded">support_agent</span></span><span class="action-copy"><strong data-i18n="reportBug">Report a bug</strong></span><span class="material-symbols-rounded action-arrow">open_in_new</span>
             </button>
           </div>
-          <div class="morphe-manager-note" data-i18n="morpheManagerNote">Enable the global mount-unmounting option above, then enable it for each Morphe module. Reboot to apply changes.</div>
-          <div id="morphe-module-list" class="morphe-module-list"><div class="empty" data-i18n="morpheLoading">Scanning installed modules…</div></div>
         </section>
-      </div>
-
-      <div class="section-header">
-        <span class="material-symbols-rounded">route</span>
-        <span data-i18n="runtimePaths">Runtime paths</span>
-        <span id="runtime-count">—</span>
-      </div>
-      <div class="arch-grid" id="arch-grid"></div>
-      <div class="device-section">
-        <div class="section-header">
-          <span class="material-symbols-rounded">smartphone</span>
-          <span data-i18n="deviceInformation">Device information</span>
-        </div>
-        <section class="panel-card device-card">
-          <div class="device-grid">
-            <div class="device-item"><span data-i18n="deviceName">Device</span><strong id="device-name">—</strong></div>
-            <div class="device-item"><span data-i18n="androidVersion">Android</span><strong id="android-version">—</strong></div>
-            <div class="device-item"><span data-i18n="selinux">SELinux</span><strong id="selinux-status">—</strong></div>
-            <div class="device-item"><span data-i18n="treatWheel">Treat Wheel</span><strong id="treat-wheel">—</strong></div>
+        <section class="dashboard-section" id="modules-section">
+          <div class="section-heading">
+            <div><h2 data-i18n="loadedRuntime">Loaded modules &amp; runtime</h2></div>
+          </div>
+          <div class="surface-card modules-runtime-card">
+            <div class="module-toolbar"><label class="module-search"><span class="material-symbols-rounded">search</span><input id="module-search" type="search" placeholder="Search modules" data-i18n-placeholder="searchModules" autocomplete="off"></label></div>
+            <div class="module-grid" id="module-table"></div>
+            <div class="runtime-card-divider"></div>
+            <div class="runtime-subheading"><span class="material-symbols-rounded">memory</span><strong data-i18n="architectureStatus">Architecture status</strong></div>
+            <div class="arch-grid" id="arch-grid"></div>
+            <div class="runtime-card-divider"></div>
+            <div class="runtime-subheading"><span class="material-symbols-rounded">extension</span><strong data-i18n="morpheControls">Morphe module controls</strong><button class="runtime-refresh" id="morphe-refresh-btn" type="button" aria-label="Refresh module list" data-i18n-aria="refreshModuleList"><span class="material-symbols-rounded">refresh</span></button></div>
+            <div class="morphe-module-list" id="morphe-module-list"><div class="empty" data-i18n="loadingMorphe">Loading Morphe modules…</div></div><p class="runtime-module-note" data-i18n="runtimeCleanupNote">ReVanced and Morphe mount cleanup is controlled in Runtime behaviour.</p>
           </div>
         </section>
       </div>
     </main>
   </div>
-  <div class="lang-picker" id="lang-picker">
-    <div class="lang-picker-backdrop"></div>
-    <div class="lang-picker-sheet">
-      <div class="lang-picker-title" data-i18n="selectLanguage">Select Language</div>
+  <div class="lang-picker" id="lang-picker" aria-hidden="true">
+    <button class="lang-picker-backdrop" aria-label="Close language selector" data-i18n-aria="close"></button>
+    <section class="lang-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="language-title">
+      <div class="sheet-handle"></div><div class="lang-picker-title" id="language-title" data-i18n="selectLanguage">Select Language</div>
       <div class="lang-options">
         <button class="lang-option" data-lang="en"><span class="lang-flag">🇺🇸</span><span>English</span><span class="lang-check material-symbols-rounded">check</span></button>
         <button class="lang-option" data-lang="ar"><span class="lang-flag">🇸🇦</span><span>العربية</span><span class="lang-check material-symbols-rounded">check</span></button>
@@ -236,9 +153,26 @@
         <button class="lang-option" data-lang="ru"><span class="lang-flag">🇷🇺</span><span>русский</span><span class="lang-check material-symbols-rounded">check</span></button>
       </div>
       <button class="lang-picker-close" data-i18n="close">Close</button>
-    </div>
+    </section>
   </div>
-  <div class="toast" id="toast"></div>
+  <div class="report-overlay" id="report-overlay" aria-hidden="true">
+    <button class="report-backdrop" type="button" aria-label="Close report information" data-i18n-aria="close"></button>
+    <section class="report-card" role="dialog" aria-modal="true" aria-labelledby="report-title">
+      <div class="report-card-heading"><span class="report-card-icon material-symbols-rounded">bug_report</span><button class="report-close" id="report-close" type="button" aria-label="Close"><span class="material-symbols-rounded">close</span></button></div>
+      <h2 id="report-title" data-i18n="reportBug">Report a bug</h2>
+      <p class="report-intro" data-i18n="reportIntro">The dashboard already shows the detected runtime state. If something looks wrong or a feature is not behaving as expected, send the device and runtime information so the issue can be investigated.</p>
+      <div class="report-instructions">
+        <div class="report-instruction"><span class="report-step">1</span><p data-i18n="reportStep1">Tap <strong>Copy information</strong> in the Actions section, then send the copied report along with a short description of the issue to MEOWna.</p></div>
+        <div class="report-instruction"><span class="report-step">2</span><p data-i18n="reportStep2">If the problem happens on a release build (the filename does not contain <code>debug</code>), enable <strong>DEBUG LOGGING</strong> in the WebUI and reboot. After rebooting, copy the information again and send the updated report.</p></div>
+      </div>
+      <a class="report-telegram" href="https://t.me/HelloMona" target="_blank" rel="noopener noreferrer"><span class="material-symbols-rounded">send</span data-i18n="contactTelegram">Contact MEOWna on Telegram</a>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="translations/en.js"></script>
+  <script src="translations/ar.js"></script>
+  <script src="translations/zh.js"></script>
+  <script src="translations/ru.js"></script>
   <script type="module" src="script.js"></script>
 </body>
 </html>
