@@ -4,7 +4,11 @@ mkdir "$TMPDIR_FOR_VERIFY"
 abort_verify() {
   ui_print "*********************************************************"
   ui_print "! $1"
-  ui_print "! This zip may be corrupted, please try downloading again"
+  ui_print "! This zip is corrupted, please download it from release source"
+  sleep 3
+  ui_print " "
+  ui_print "+ Redirecting to official module release source"
+  nohup am start -a android.intent.action.VIEW -d "https://github.com/meowdump/MeowZygisk" > /dev/null 2>&1 &
   abort    "*********************************************************"
 }
 
@@ -35,7 +39,9 @@ extract() {
   [ -f "$hash_path" ] || abort_verify "$file.sha256 not exists"
 
   (echo "$(cat "$hash_path")  $file_path" | sha256sum -c -s -) || abort_verify "Failed to verify $file"
-  ui_print "- Verified $file" >&1
+  ui_print "- ✔ $file" >&1
+  ui_print " "
+  ui_print " "
 }
 
 file="META-INF/com/google/android/update-binary"
@@ -45,7 +51,9 @@ unzip -o "$ZIPFILE" "META-INF/com/google/android/*" -d "$TMPDIR_FOR_VERIFY" >&2
 [ -f "$file_path" ] || abort_verify "$file not exists"
 if [ -f "$hash_path" ]; then
   (echo "$(cat "$hash_path")  $file_path" | sha256sum -c -s -) || abort_verify "Failed to verify $file"
-  ui_print "- Verified $file" >&1
+  ui_print "- ✔ $file" >&1
+  ui_print " "
+  ui_print " "
 else
   ui_print "- Download from Magisk app"
 fi
